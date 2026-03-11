@@ -183,17 +183,20 @@ const Hero: React.FC = () => {
             "One app. Everything Tala. Delivered to your doorstep."
           </p>
 
-          {/* Search Bar */}
+          {/* Search Bar - Mobile Optimized */}
           <div className="w-full max-w-2xl mt-8">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search for fresh tomatoes, a plumber, or boda ride..."
-                className="w-full pl-12 pr-36 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full focus:outline-none focus:border-redbull-blue focus:ring-4 focus:ring-redbull-blue/20 transition-all text-white placeholder-gray-300 text-sm sm:text-base"
+                className="w-full pl-12 pr-24 sm:pr-36 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full focus:outline-none focus:border-redbull-blue focus:ring-4 focus:ring-redbull-blue/20 transition-all text-white placeholder-gray-300 text-sm sm:text-base"
               />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-redbull-blue text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-redbull-blue/90 transition-colors shadow-lg hover:shadow-xl hidden sm:block">
-                Search
+              
+              {/* Mobile Search Button (always visible) */}
+              <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-redbull-blue text-white px-4 sm:px-6 py-2 rounded-full text-sm font-medium hover:bg-redbull-blue/90 transition-colors shadow-lg hover:shadow-xl">
+                <span className="hidden sm:inline">Search</span>
+                <Search className="w-4 h-4 sm:hidden" />
               </button>
             </div>
           </div>

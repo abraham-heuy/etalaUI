@@ -8,6 +8,7 @@ import HowItWorks from '../components/landing/HowItWorks';
 import CTA from '../components/landing/CTA';
 import Footer from '../components/landing/Footer';
 import QuickActions from '../components/landing/QuickActions';
+import InfoUpdates from '../components/landing/infoUpdates';
 
 
 const LandingPage: React.FC = () => {
@@ -37,6 +38,7 @@ const LandingPage: React.FC = () => {
       <main className="overflow-hidden">
         <Hero />
         <QuickActions />
+        <InfoUpdates />
         <Features />
         <Categories />
         <HowItWorks />
