@@ -17,6 +17,13 @@ import LivestockPage from "./Pages/Farmers/livestock";
 import LivestockInquirePage from "./Pages/Farmers/livestock/inquire/[id]";
 import BodaHome from "./Pages/Rides";
 import PricingPage from "./Pages/Rides/pricing";
+import NotFound from "./common/NotFound";
+import ServicesHome from "./Pages/Freelancers";
+import ServiceCategoryPage from "./Pages/Freelancers/category/[slug]";
+import ServiceProviderPage from "./Pages/Freelancers/provider/[id]";
+import FoodHome from "./Pages/Food";
+import RestaurantDetailPage from "./Pages/Food/Restaurant/[id]";
+import FoodCategoryPage from "./Pages/Food/cuisine/[slug]";
 
 export const AppRoutes = () => {
   return (
@@ -25,36 +32,45 @@ export const AppRoutes = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/about-us" element={<AboutPage />} />
       <Route path="daily-updates" element={<DailyUpdates />} />
-
       {/* get started routes */}
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/sign-up" element={<SignUp />} />
-
       <Route path="/marketplace">
         <Route index element={<MarketplaceHome />} />
         <Route path="category/:slug" element={<CategoryPage />} />
         <Route path="product/:id" element={<ProductDetailPage />} />
         <Route path="store/:id" element={<StoreDetailPage />} />
       </Route>
-
       <Route path="/farmers">
         <Route index element={<FarmersHome />} />
         <Route path="category/:slug" element={<FarmersCategoryPage />} />
         <Route path="farmer/:id" element={<FarmerDetailPage />} />
         <Route path="product/:id" element={<FarmerProductDetailPage />} />
       </Route>
-
       <Route path="/farmers/livestock">
         <Route index element={<LivestockPage />} />
-        <Route path=":id" element={<LivestockPage />} /> 
+        <Route path=":id" element={<LivestockPage />} />
         <Route path="inquire/:id" element={<LivestockInquirePage />} />
       </Route>
-
       <Route path="/boda">
-  <Route index element={<BodaHome />} />
-  <Route path="pricing" element={<PricingPage />} />
-</Route>
+        <Route index element={<BodaHome />} />
+        <Route path="pricing" element={<PricingPage />} />
+      </Route>
+      <Route path="/services">
+        <Route index element={<ServicesHome />} />
+        <Route path="category/:slug" element={<ServiceCategoryPage />} />
+        <Route path="provider/:id" element={<ServiceProviderPage />} />
+      </Route>
+      <Route path="/food">
+        <Route index element={<FoodHome />} />
+        <Route path="cuisine/:slug" element={<FoodCategoryPage />} />
+        <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
+        {/* <Route path="blog" element={<FoodBlogPage />} />
+  <Route path="blog/:id" element={<FoodBlogPostPage />} /> */}
+      </Route>
+      {/* Not Found Wildcard */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
