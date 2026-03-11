@@ -16,14 +16,14 @@ const QuickActions: React.FC = () => {
       name: 'Marketplace', 
       icon: Store, 
       color: 'from-blue-400 to-redbull-blue',
-      href: '#marketplace',
+      href: '/marketplace',
       count: '200+ shops'
     },
     { 
       name: 'Farmers Market', 
       icon: Wheat, 
       color: 'from-green-400 to-teal-500',
-      href: '#farmers',
+      href: '/farmers',
       count: '56 farmers'
     },
     { 
@@ -44,7 +44,7 @@ const QuickActions: React.FC = () => {
       name: 'Transport', 
       icon: Bike, 
       color: 'from-yellow-400 to-amber-500',
-      href: '#boda',
+      href: '/boda',
       count: '50+ riders/Drivers'
     },
     { 
