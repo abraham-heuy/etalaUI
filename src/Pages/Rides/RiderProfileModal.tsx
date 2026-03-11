@@ -6,13 +6,10 @@ import {
   MapPin, 
   Bike, 
   Phone, 
-  Mail,
   Award,
   Shield,
-  Clock,
   Calendar,
   ChevronRight,
-  MessageCircle,
   ThumbsUp
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
