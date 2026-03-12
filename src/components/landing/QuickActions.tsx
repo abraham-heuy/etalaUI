@@ -30,14 +30,14 @@ const QuickActions: React.FC = () => {
       name: 'Accommodation', 
       icon: Hotel, 
       color: 'from-pink-400 to-rose-500',
-      href: '#accommodation',
+      href: '/stays',
       count: '15+ places'
     },
     { 
       name: 'Food', 
       icon: Coffee, 
       color: 'from-red-400 to-orange-500',
-      href: '#food',
+      href: '/food',
       count: '25+ eateries'
     },
     { 
@@ -51,7 +51,7 @@ const QuickActions: React.FC = () => {
       name: 'Services', 
       icon: Wrench, 
       color: 'from-purple-400 to-indigo-500',
-      href: '#services',
+      href: '/services',
       count: '30+ freelancers'
     },
   ];

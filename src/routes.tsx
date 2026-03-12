@@ -24,6 +24,9 @@ import ServiceProviderPage from "./Pages/Freelancers/provider/[id]";
 import FoodHome from "./Pages/Food";
 import RestaurantDetailPage from "./Pages/Food/Restaurant/[id]";
 import FoodCategoryPage from "./Pages/Food/cuisine/[slug]";
+import StaysHome from "./Pages/stays";
+import StayCategoryPage from "./Pages/stays/category/[slug]";
+import PropertyDetailPage from "./Pages/stays/product/[id]";
 
 export const AppRoutes = () => {
   return (
@@ -67,7 +70,12 @@ export const AppRoutes = () => {
         <Route path="cuisine/:slug" element={<FoodCategoryPage />} />
         <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
         {/* <Route path="blog" element={<FoodBlogPage />} />
-  <Route path="blog/:id" element={<FoodBlogPostPage />} /> */}
+        <Route path="blog/:id" element={<FoodBlogPostPage />} /> */}
+      </Route>
+      <Route path="/stays">
+        <Route index element={<StaysHome />} />
+        <Route path="category/:slug" element={<StayCategoryPage />} />
+        <Route path="property/:id" element={<PropertyDetailPage />} />
       </Route>
       {/* Not Found Wildcard */}
       <Route path="*" element={<NotFound />} />
