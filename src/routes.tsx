@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./Pages/LandingPage";
 import AboutPage from "./Pages/AboutPage";
 import DailyUpdates from "./components/about/DailyUpdates";
@@ -27,6 +27,25 @@ import FoodCategoryPage from "./Pages/Food/cuisine/[slug]";
 import StaysHome from "./Pages/stays";
 import StayCategoryPage from "./Pages/stays/category/[slug]";
 import PropertyDetailPage from "./Pages/stays/product/[id]";
+import DashboardLayout from "./Pages/dashboard/layout";
+import DashboardOverview from "./Pages/dashboard/items/overview";
+import OrdersPage from "./Pages/dashboard/items/orders";
+import WishlistPage from "./Pages/dashboard/items/WishList";
+import AddressesPage from "./Pages/dashboard/items/addresses";
+import PaymentsPage from "./Pages/dashboard/items/payment";
+import SettingsPage from "./Pages/dashboard/items/settings";
+import SalesPage from "./Pages/dashboard/sellerTools.tsx/sales";
+import ProductsPage from "./Pages/dashboard/sellerTools.tsx/products";
+import EarningsPage from "./Pages/dashboard/sellerTools.tsx/earnings";
+import ReviewsPage from "./Pages/dashboard/sellerTools.tsx/Reviews";
+import MessagesPage from "./Pages/dashboard/sellerTools.tsx/messages";
+import ProductNewPage from "./Pages/dashboard/product/newProduct(listing)";
+import ProductEditPage from "./Pages/dashboard/product/productEdit";
+import SalesOrderDetailPage from "./Pages/dashboard/sales/[id]";
+import BecomeSellerPage from "./Pages/becomeSeller";
+import PartnerPage from "./Pages/patner";
+import ContactPage from "./Pages/contact";
+import OrderDetailPage from "./Pages/dashboard/orders/[id]";
 
 export const AppRoutes = () => {
   return (
@@ -39,6 +58,15 @@ export const AppRoutes = () => {
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/sign-up" element={<SignUp />} />
+      <Route path="/become-seller" element={<BecomeSellerPage />}/>
+
+      {/* communications routes  
+       --for  partnerships 
+       --or for reporting(contact)*/}
+         
+      <Route path="/partnership" element={<PartnerPage />}/>
+      <Route path="/contact" element={<ContactPage />}/>
+
       <Route path="/marketplace">
         <Route index element={<MarketplaceHome />} />
         <Route path="category/:slug" element={<CategoryPage />} />
@@ -76,6 +104,32 @@ export const AppRoutes = () => {
         <Route index element={<StaysHome />} />
         <Route path="category/:slug" element={<StayCategoryPage />} />
         <Route path="property/:id" element={<PropertyDetailPage />} />
+      </Route>
+
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<Navigate to="/dashboard/overview" replace />} />
+        <Route path="overview" element={<DashboardOverview />} />
+        <Route path="orders" element={<OrdersPage />} />
+        {/* get a specifi order by passing an id => in /[id] */}
+        <Route path="orders/:id" element ={<OrderDetailPage />}/>
+        <Route path="wishlist" element={<WishlistPage />} />
+        <Route path="addresses" element={<AddressesPage />} />
+        <Route path="payments" element={<PaymentsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+
+        {/* Additional seller tools: we will add conditional checking later: 
+        aslo there is another conditional checking in the  layout /layout check out */}
+        <Route path="products" element={<ProductsPage />} />
+        {/* post your products here(Listing components navigate to edit it there) */}
+        <Route path="products/new" element={<ProductNewPage />} />
+        {/* To edit a product that exists simply navigate to the route /product/edit :id */}
+        <Route path="products/edit/:id" element={<ProductEditPage />} />
+        <Route path="sales" element={<SalesPage />} />
+        {/* fetch a single order  from /[id] */}
+        <Route path="sales/:id" element={<SalesOrderDetailPage />} />
+        <Route path="earnings" element={<EarningsPage />} />
+        <Route path="reviews" element={<ReviewsPage />} />
+        <Route path="messages" element={<MessagesPage />} />
       </Route>
       {/* Not Found Wildcard */}
       <Route path="*" element={<NotFound />} />

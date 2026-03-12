@@ -40,41 +40,41 @@ const Features: React.FC = () => {
       title: 'Marketplace',
       description: 'Electronics, clothes, household goods from local shops',
       stats: '200+ shops',
-      href: '#marketplace'
+      href: '/marketplace'
     },
     {
       icon: Wheat,
       title: 'Farmers Market',
       description: 'Fresh produce directly from Tala farms',
       stats: '56 farmers',
-      href: '#farmers'
+      href: '/farmers'
     },
     {
       icon: Bike,
       title: 'Boda Rides',
       description: 'Quick delivery and rides around town',
       stats: '50+ riders',
-      href: '#boda'
+      href: '/boda'
     },
     {
       icon: Wrench,
       title: 'Services',
       description: 'Find plumbers, electricians, salons',
       stats: '30+ fundis',
-      href: '#services'
+      href: '/services'
     },
     {
       icon: Coffee,
       title: 'Food & Restaurants',
       description: 'Order from your favorite local spots',
       stats: '25+ eateries',
-      href: '#food'
+      href: '/food'
     },
     {
       icon: Building2,
       title: 'Supplier Market',
-      description: 'Wholesale items for businesses',
-      stats: '40+ wholesalers',
+      description: 'Coming soon',
+      stats: 'N/A',
       href: '#supplier'
     },
   ];

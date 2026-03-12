@@ -302,15 +302,14 @@ const Navbar: React.FC = () => {
       {
         title: "New Here?",
         items: [
-          { name: "Create Account", href: "/sign-up", icon: UserPlus, description: "Join as a buyer, seller, or rider", highlight: true },
+          { name: "Create Account", href: "/sign-up", icon: UserPlus, description: "Join as a buyer, seller.", highlight: true },
         ],
       },
       {
         title: "More Options",
         items: [
           { name: "Become a Seller", href: "/become-seller", icon: Store, description: "Start selling your products", highlight: false },
-          { name: "Become a Rider", href: "/become-rider", icon: Bike, description: "Earn with every delivery", highlight: false },
-          { name: "Partner with Us", href: "/partner", icon: Shield, description: "For businesses and organizations", highlight: false },
+          { name: "Partner with Us", href: "/partnership", icon: Shield, description: "For businesses and organizations", highlight: false },
         ],
       },
     ],

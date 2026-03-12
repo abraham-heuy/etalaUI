@@ -2,9 +2,7 @@
 import React, { useState } from 'react';
 import { 
   UserPlus,
-  Store,
   Users,
-  Briefcase,
   ArrowRight,
   ArrowLeft,
   Loader2,
@@ -14,34 +12,18 @@ import {
   Phone,
   Chrome,
   User,
-  Building2,
-  Tag,
-  Package,
-  Wrench,
-  Coffee,
-  Hotel,
-  Bike,
-  Shield,
   Info,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Store
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import BackArrow from '../about/backArrow';
 
 type SignUpStep = 'role' | 'details' | 'verification' | 'success';
-type UserRole = 'buyer' | 'seller' | null;
-type SellerCategory = 'marketplace' | 'freelance' | 'food' | 'services' | 'transport' | 'stays' | 'other';
+type UserRole = 'buyer' | null; // Only buyer now
 type AuthMethod = 'phone' | 'google';
-
-interface SellerCategoryOption {
-  id: SellerCategory;
-  name: string;
-  icon: any;
-  description: string;
-  color: string;
-}
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
@@ -49,8 +31,6 @@ const SignUp: React.FC = () => {
   // Step state
   const [currentStep, setCurrentStep] = useState<SignUpStep>('role');
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [sellerCategory, setSellerCategory] = useState<SellerCategory | null>(null);
-  const [customCategory, setCustomCategory] = useState('');
   const [authMethod, setAuthMethod] = useState<AuthMethod>('phone');
   
   // Form data
@@ -59,7 +39,6 @@ const SignUp: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [businessName, setBusinessName] = useState('');
   
   // OTP
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -70,59 +49,6 @@ const SignUp: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [otpTimer, setOtpTimer] = useState(60);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
-
-  // Seller categories
-  const sellerCategories: SellerCategoryOption[] = [
-    { 
-      id: 'marketplace', 
-      name: 'Marketplace', 
-      icon: Package, 
-      description: 'Sell electronics, fashion, household items',
-      color: 'from-blue-400 to-sky-500'
-    },
-    { 
-      id: 'freelance', 
-      name: 'Freelance', 
-      icon: Briefcase, 
-      description: 'Offer graphic design, writing, consulting',
-      color: 'from-purple-400 to-indigo-500'
-    },
-    { 
-      id: 'food', 
-      name: 'Food & Restaurants', 
-      icon: Coffee, 
-      description: 'Restaurants, catering, home-cooked meals',
-      color: 'from-red-400 to-orange-500'
-    },
-    { 
-      id: 'services', 
-      name: 'Services', 
-      icon: Wrench, 
-      description: 'Plumbing, electrical, salon, repairs',
-      color: 'from-green-400 to-emerald-500'
-    },
-    { 
-      id: 'transport', 
-      name: 'Transport', 
-      icon: Bike, 
-      description: 'Boda rides, delivery, taxi services',
-      color: 'from-yellow-400 to-amber-500'
-    },
-    { 
-      id: 'stays', 
-      name: 'Stays', 
-      icon: Hotel, 
-      description: 'Hotels, Airbnbs, guest houses',
-      color: 'from-pink-400 to-rose-500'
-    },
-    { 
-      id: 'other', 
-      name: 'Other', 
-      icon: Tag, 
-      description: 'My category is not listed',
-      color: 'from-slate-400 to-gray-500'
-    },
-  ];
 
   // Handle phone formatting
   const formatPhoneNumber = (value: string) => {
@@ -175,11 +101,6 @@ const SignUp: React.FC = () => {
     setUserRole(role);
   };
 
-  // Handle seller category selection
-  const handleCategorySelect = (category: SellerCategory) => {
-    setSellerCategory(category);
-  };
-
   // Handle continue from role
   const handleRoleContinue = () => {
     if (!userRole) {
@@ -193,8 +114,11 @@ const SignUp: React.FC = () => {
   // Handle back from details
   const handleBackToRole = () => {
     setCurrentStep('role');
-    setSellerCategory(null);
-    setCustomCategory('');
+  };
+
+  // Handle seller redirect
+  const handleSellerClick = () => {
+    navigate('/become-seller');
   };
 
   // Handle phone signup
@@ -234,20 +158,6 @@ const SignUp: React.FC = () => {
       return;
     }
 
-    // Seller-specific validation
-    if (userRole === 'seller') {
-      if (!sellerCategory) {
-        setError('Please select a category for your business');
-        setIsLoading(false);
-        return;
-      }
-      if (sellerCategory === 'other' && !customCategory) {
-        setError('Please specify your category');
-        setIsLoading(false);
-        return;
-      }
-    }
-
     // Simulate API call
     setTimeout(() => {
       setCurrentStep('verification');
@@ -263,7 +173,7 @@ const SignUp: React.FC = () => {
     setAuthMethod('google');
     setError('');
 
-    // Validate required fields for Google signup too
+    // Validate required fields for Google signup
     if (!fullName) {
       setError('Please enter your full name');
       setIsLoading(false);
@@ -280,20 +190,6 @@ const SignUp: React.FC = () => {
       setError('You must agree to the terms and conditions');
       setIsLoading(false);
       return;
-    }
-
-    // Seller-specific validation
-    if (userRole === 'seller') {
-      if (!sellerCategory) {
-        setError('Please select a category for your business');
-        setIsLoading(false);
-        return;
-      }
-      if (sellerCategory === 'other' && !customCategory) {
-        setError('Please specify your category');
-        setIsLoading(false);
-        return;
-      }
     }
 
     // Simulate Google OAuth
@@ -331,13 +227,6 @@ const SignUp: React.FC = () => {
     }, 1500);
   };
 
-  // Get selected category name
-  const getSelectedCategoryName = () => {
-    if (!sellerCategory) return '';
-    if (sellerCategory === 'other') return customCategory || 'Other';
-    return sellerCategories.find(c => c.id === sellerCategory)?.name || '';
-  };
-
   // Required field indicator component
   const RequiredIndicator = () => <span className="text-red-500 ml-1">*</span>;
 
@@ -352,8 +241,7 @@ const SignUp: React.FC = () => {
             </div>
             <h1 className="text-xl font-display font-semibold text-charcoal">
               {currentStep === 'role' && 'Create Account'}
-              {currentStep === 'details' && userRole === 'buyer' && 'Buyer Details'}
-              {currentStep === 'details' && userRole === 'seller' && 'Seller Details'}
+              {currentStep === 'details' && 'Buyer Details'}
               {currentStep === 'verification' && 'Verify Phone'}
               {currentStep === 'success' && 'Welcome!'}
             </h1>
@@ -375,44 +263,23 @@ const SignUp: React.FC = () => {
                 Account Created!
               </h2>
               <p className="text-sm text-slate-text">
-                {userRole === 'buyer' 
-                  ? 'Your buyer account has been created successfully'
-                  : 'Your seller account has been created successfully'}
+                Your buyer account has been created successfully
               </p>
             </div>
 
-            {/* Role-specific success message */}
+            {/* Success message */}
             <div className="bg-sky-50 rounded-xl p-4">
-              {userRole === 'buyer' ? (
-                <div className="flex gap-3">
-                  <Users className="w-5 h-5 text-sky-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-sky-800">
-                      You can now start browsing and shopping on E-TALA!
-                    </p>
-                    <p className="text-xs text-sky-600 mt-1">
-                      Complete your profile anytime in settings
-                    </p>
-                  </div>
+              <div className="flex gap-3">
+                <Users className="w-5 h-5 text-sky-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-sky-800">
+                    You can now start browsing and shopping on E-TALA!
+                  </p>
+                  <p className="text-xs text-sky-600 mt-1">
+                    Complete your profile anytime in settings
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <Store className="w-5 h-5 text-sky-600 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-sky-800">
-                        Your seller account has been created as a {getSelectedCategoryName()} seller
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-white/80 rounded-lg p-3">
-                    <p className="text-xs text-sky-700 flex items-center gap-1">
-                      <Info className="w-3 h-3" />
-                      You'll need to verify your business before listing products
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Action Button */}
@@ -437,7 +304,7 @@ const SignUp: React.FC = () => {
                 Join E-TALA
               </h2>
               <p className="text-sm text-slate-text">
-                Select how you want to use the platform
+                Choose how you want to use the platform
               </p>
             </div>
 
@@ -490,22 +357,14 @@ const SignUp: React.FC = () => {
                 </div>
               </button>
 
-              {/* Seller Card */}
+              {/* Seller Card - Now redirects to /become-seller */}
               <button
-                onClick={() => handleRoleSelect('seller')}
-                className={`w-full p-5 rounded-xl border-2 transition-all text-left ${
-                  userRole === 'seller'
-                    ? 'border-sky-500 bg-sky-50'
-                    : 'border-sky-100 bg-white hover:border-sky-200'
-                }`}
+                onClick={handleSellerClick}
+                className="w-full p-5 rounded-xl border-2 border-sky-100 bg-white hover:border-sky-200 transition-all text-left group"
               >
                 <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    userRole === 'seller' ? 'bg-sky-500' : 'bg-sky-100'
-                  }`}>
-                    <Store className={`w-6 h-6 ${
-                      userRole === 'seller' ? 'text-white' : 'text-sky-600'
-                    }`} />
+                  <div className="w-12 h-12 rounded-full bg-sky-100 flex items-center justify-center group-hover:bg-sky-200 transition-colors">
+                    <Store className="w-6 h-6 text-sky-600" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-display font-semibold text-charcoal">
@@ -522,21 +381,21 @@ const SignUp: React.FC = () => {
                         Get Verified
                       </span>
                     </div>
+                    <div className="mt-2 text-xs text-sky-600 font-medium flex items-center gap-1">
+                      Apply as seller →
+                    </div>
                   </div>
-                  {userRole === 'seller' && (
-                    <CheckCircle className="w-5 h-5 text-sky-500" />
-                  )}
                 </div>
               </button>
             </div>
 
-            {/* Continue Button */}
+            {/* Continue Button - Only for buyers */}
             <button
               onClick={handleRoleContinue}
               disabled={!userRole}
               className="w-full bg-sky-500 text-white py-3.5 rounded-xl text-sm font-medium hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
             >
-              Continue
+              Continue as Buyer
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -552,7 +411,7 @@ const SignUp: React.FC = () => {
           </div>
         )}
 
-        {/* Details Step */}
+        {/* Details Step - Buyer Only */}
         {currentStep === 'details' && (
           <div className="space-y-6 animate-slide-up">
             {/* Back Button */}
@@ -566,19 +425,13 @@ const SignUp: React.FC = () => {
 
             <div className="text-center">
               <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                {userRole === 'buyer' ? (
-                  <Users className="w-8 h-8 text-sky-600" />
-                ) : (
-                  <Store className="w-8 h-8 text-sky-600" />
-                )}
+                <Users className="w-8 h-8 text-sky-600" />
               </div>
               <h2 className="text-2xl font-display font-bold text-charcoal mb-2">
-                {userRole === 'buyer' ? 'Buyer Details' : 'Seller Details'}
+                Buyer Details
               </h2>
               <p className="text-sm text-slate-text">
-                {userRole === 'buyer' 
-                  ? 'Tell us a bit about yourself'
-                  : 'Tell us about your business'}
+                Tell us a bit about yourself
               </p>
             </div>
 
@@ -698,102 +551,6 @@ const SignUp: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Seller Category Selection */}
-                {userRole === 'seller' && (
-                  <div className="space-y-3 pt-2">
-                    <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
-                      Select Your Business Category
-                      <RequiredIndicator />
-                    </label>
-                    
-                    <div className="grid grid-cols-1 gap-2">
-                      {sellerCategories.map((cat) => {
-                        const Icon = cat.icon;
-                        const isSelected = sellerCategory === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => handleCategorySelect(cat.id)}
-                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                              isSelected
-                                ? `border-sky-500 bg-gradient-to-r ${cat.color} bg-opacity-10`
-                                : 'border-sky-100 bg-white hover:border-sky-200'
-                            }`}
-                          >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              isSelected ? 'bg-white/20' : 'bg-sky-100'
-                            }`}>
-                              <Icon className={`w-5 h-5 ${
-                                isSelected ? 'text-white' : 'text-sky-600'
-                              }`} />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <h4 className={`text-sm font-medium ${
-                                isSelected ? 'text-white' : 'text-charcoal'
-                              }`}>
-                                {cat.name}
-                              </h4>
-                              <p className={`text-xs ${
-                                isSelected ? 'text-white/80' : 'text-slate-text'
-                              }`}>
-                                {cat.description}
-                              </p>
-                            </div>
-                            {isSelected && (
-                              <CheckCircle className="w-5 h-5 text-white" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Custom Category Input */}
-                    {sellerCategory === 'other' && (
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          value={customCategory}
-                          onChange={(e) => setCustomCategory(e.target.value)}
-                          placeholder="Please specify your category"
-                          className="w-full px-4 py-2 bg-white border border-sky-200 rounded-lg text-sm focus:outline-none focus:border-sky-400"
-                          required={sellerCategory === 'other'}
-                        />
-                      </div>
-                    )}
-
-                    {/* Verification Note */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2">
-                      <div className="flex gap-2">
-                        <Shield className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-800">
-                          You'll need to verify your business before listing products. 
-                          We'll guide you through the verification process after signup.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Business Name (optional for sellers) */}
-                {userRole === 'seller' && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-text ml-2">
-                      Business Name (Optional)
-                    </label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
-                      <input
-                        type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        placeholder="Your Business Name"
-                        className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Terms Agreement */}
                 <div className="flex items-center gap-2">
                   <button
@@ -897,102 +654,6 @@ const SignUp: React.FC = () => {
                     You'll be able to complete your profile after Google signup
                   </p>
                 </div>
-
-                {/* Seller Category Selection - Same as phone form */}
-                {userRole === 'seller' && (
-                  <div className="space-y-3 pt-2">
-                    <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
-                      Select Your Business Category
-                      <RequiredIndicator />
-                    </label>
-                    
-                    <div className="grid grid-cols-1 gap-2">
-                      {sellerCategories.map((cat) => {
-                        const Icon = cat.icon;
-                        const isSelected = sellerCategory === cat.id;
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => handleCategorySelect(cat.id)}
-                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                              isSelected
-                                ? `border-sky-500 bg-gradient-to-r ${cat.color} bg-opacity-10`
-                                : 'border-sky-100 bg-white hover:border-sky-200'
-                            }`}
-                          >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              isSelected ? 'bg-white/20' : 'bg-sky-100'
-                            }`}>
-                              <Icon className={`w-5 h-5 ${
-                                isSelected ? 'text-white' : 'text-sky-600'
-                              }`} />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <h4 className={`text-sm font-medium ${
-                                isSelected ? 'text-white' : 'text-charcoal'
-                              }`}>
-                                {cat.name}
-                              </h4>
-                              <p className={`text-xs ${
-                                isSelected ? 'text-white/80' : 'text-slate-text'
-                              }`}>
-                                {cat.description}
-                              </p>
-                            </div>
-                            {isSelected && (
-                              <CheckCircle className="w-5 h-5 text-white" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Custom Category Input */}
-                    {sellerCategory === 'other' && (
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          value={customCategory}
-                          onChange={(e) => setCustomCategory(e.target.value)}
-                          placeholder="Please specify your category"
-                          className="w-full px-4 py-2 bg-white border border-sky-200 rounded-lg text-sm focus:outline-none focus:border-sky-400"
-                          required={sellerCategory === 'other'}
-                        />
-                      </div>
-                    )}
-
-                    {/* Verification Note */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2">
-                      <div className="flex gap-2">
-                        <Shield className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-800">
-                          You'll need to verify your business before listing products. 
-                          We'll guide you through the verification process after signup.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Business Name (optional for sellers) */}
-                {userRole === 'seller' && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-text ml-2">
-                      Business Name (Optional)
-                    </label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
-                      <input
-                        type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        placeholder="Your Business Name"
-                        className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
-                      />
-                    </div>
-                  </div>
-                )}
 
                 {/* Terms Agreement */}
                 <div className="flex items-center gap-2">

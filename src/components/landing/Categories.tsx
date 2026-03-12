@@ -329,7 +329,7 @@ const Categories: React.FC = () => {
                 {/* View All Link */}
                 <div className="mt-8 text-center">
                   <a 
-                    href={`#${selectedCategory}`} 
+                    href={`/${selectedCategory}`} 
                     className="inline-flex items-center gap-2 text-redbull-blue hover:text-redbull-blue/80 font-medium group"
                   >
                     View all in {mainCategories.find(c => c.id === selectedCategory)?.name}
@@ -391,7 +391,7 @@ const Categories: React.FC = () => {
               {/* View All Link */}
               <div className="mt-8 text-center">
                 <a 
-                  href={`#${selectedCategory}`} 
+                  href={`/${selectedCategory}`} 
                   className="inline-flex items-center gap-2 text-redbull-blue hover:text-redbull-blue/80 font-medium group"
                 >
                   View all in {mainCategories.find(c => c.id === selectedCategory)?.name}
