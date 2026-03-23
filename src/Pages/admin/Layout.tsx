@@ -21,7 +21,8 @@ import {
   Store,
   AlertCircle,
   Clock,
-  CreditCard} from 'lucide-react';
+  CreditCard
+} from 'lucide-react';
 
 interface AdminUser {
   id: string;
@@ -41,7 +42,7 @@ const AdminLayout: React.FC = () => {
     id: '1',
     name: 'Admin User',
     email: 'admin@etala.com',
-    role: 'super_admin',
+    role: 'admin',
   };
 
   // Main navigation items
@@ -87,46 +88,50 @@ const AdminLayout: React.FC = () => {
     navigate('/admin/login');
   };
 
-  // Helper to render navigation section
-  const renderNavSection = (title: string, items: any[], icon?: any) => (
-    <div className="mb-6">
-      <h4 className="text-xs font-medium text-slate-text/60 uppercase tracking-wider px-3 mb-2 flex items-center gap-1">
-        {icon && <icon className="w-3 h-3" />}
-        {title}
-      </h4>
-      <div className="space-y-1">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 ${
-                active
-                  ? 'bg-redbull-blue text-white shadow-sm'
-                  : 'text-slate-text hover:bg-sky-50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-slate-text/70'}`} />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{item.name}</span>
-                  <span className={`text-xs ${active ? 'text-white/80' : 'text-slate-text/50'}`}>
-                    {item.description}
-                  </span>
+  // Helper to render navigation section - FIXED VERSION
+  const renderNavSection = (title: string, items: any[], sectionIcon?: any) => {
+    const SectionIcon = sectionIcon; // Capitalize for JSX component
+    
+    return (
+      <div className="mb-6">
+        <h4 className="text-xs font-medium text-slate-text/60 uppercase tracking-wider px-3 mb-2 flex items-center gap-1">
+          {SectionIcon && <SectionIcon className="w-3 h-3" />}
+          {title}
+        </h4>
+        <div className="space-y-1">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`group flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                  active
+                    ? 'bg-redbull-blue text-white shadow-sm'
+                    : 'text-slate-text hover:bg-sky-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-slate-text/70'}`} />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <span className={`text-xs ${active ? 'text-white/80' : 'text-slate-text/50'}`}>
+                      {item.description}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-                active ? 'text-white' : 'text-slate-text/40'
-              }`} />
-            </Link>
-          );
-        })}
+                <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
+                  active ? 'text-white' : 'text-slate-text/40'
+                }`} />
+              </Link>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-soft-white">
