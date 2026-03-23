@@ -10,12 +10,18 @@ import {
   ArrowRight,
   Package,
   Wrench,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
-import heroBg from "../../assets/tala-market-b.jfif";
+import heroVideo from "../../assets/hero.mp4";
 
 const Hero: React.FC = () => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLSpanElement>(null);
 
@@ -52,6 +58,15 @@ const Hero: React.FC = () => {
     };
   }, [isMobile, showTooltip]);
 
+  // Handle video playback
+  useEffect(() => {
+    if (videoRef.current && isVideoLoaded) {
+      videoRef.current.play().catch(error => {
+        console.log('Video autoplay prevented:', error);
+      });
+    }
+  }, [isVideoLoaded]);
+
   // Handle hover for desktop
   const handleMouseEnter = () => {
     if (!isMobile) {
@@ -72,17 +87,52 @@ const Hero: React.FC = () => {
     }
   };
 
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+    }
+  };
+
   return (
     <section className="relative h-screen flex items-center pt-16 overflow-hidden">
-      {/* Background Image with Sophisticated Overlay */}
+      {/* Video Background */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={heroBg}
-          alt="Tala Market Scene"
-          className="w-full h-full object-cover scale-105 animate-slow-zoom"
-        />
-        {/* Gradient overlay - darker at edges, lighter in center for focus */}
+        {!videoError ? (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted={isMuted}
+              playsInline
+              className="w-full h-full object-cover"
+              onLoadedData={() => setIsVideoLoaded(true)}
+              onError={() => setVideoError(true)}
+            >
+              <source src={heroVideo} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            
+            {/* Loading skeleton while video loads */}
+            {!isVideoLoaded && (
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-gray-800 animate-pulse">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 border-4 border-redbull-blue border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          // Fallback gradient if video fails to load
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-gray-800">
+            <div className="absolute inset-0 bg-black/60"></div>
+          </div>
+        )}
+        
+        {/* Gradient overlay - same as original */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60"></div>
+        
         {/* Subtle pattern overlay for texture */}
         <div
           className="absolute inset-0 opacity-20"
@@ -90,9 +140,18 @@ const Hero: React.FC = () => {
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         ></div>
+
+        {/* Video Control Button - Mute/Unmute */}
+        <button
+          onClick={toggleMute}
+          className="absolute bottom-4 right-4 z-20 bg-black/50 backdrop-blur-sm hover:bg-black/70 text-white p-2 rounded-full transition-all duration-300"
+          aria-label={isMuted ? "Unmute video" : "Mute video"}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
       </div>
 
-      {/* Content */}
+      {/* Content - EXACTLY as original */}
       <div className="relative z-10 px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto">
         <div className="flex flex-col items-center text-center animate-slide-up">
           {/* Premium Badge - with learn more below */}

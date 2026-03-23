@@ -46,6 +46,10 @@ import BecomeSellerPage from "./Pages/becomeSeller";
 import PartnerPage from "./Pages/patner";
 import ContactPage from "./Pages/contact";
 import OrderDetailPage from "./Pages/dashboard/orders/[id]";
+import AdminLayout from "./Pages/admin/Layout";
+import AdminOverview from "./Pages/admin/items/Overview";
+import UserManagement from "./Pages/admin/items/UserManagement";
+import SellerApprovals from "./Pages/admin/items/sellerApproval";
 
 export const AppRoutes = () => {
   return (
@@ -110,7 +114,7 @@ export const AppRoutes = () => {
         <Route index element={<Navigate to="/dashboard/overview" replace />} />
         <Route path="overview" element={<DashboardOverview />} />
         <Route path="orders" element={<OrdersPage />} />
-        {/* get a specifi order by passing an id => in /[id] */}
+        {/* get a specific order by passing an id => in /[id] */}
         <Route path="orders/:id" element ={<OrderDetailPage />}/>
         <Route path="wishlist" element={<WishlistPage />} />
         <Route path="addresses" element={<AddressesPage />} />
@@ -131,6 +135,16 @@ export const AppRoutes = () => {
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="messages" element={<MessagesPage />} />
       </Route>
+
+
+      {/* admin routes => for the admin dashboard */}
+      <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminOverview />} />
+          <Route path="overview" element={<AdminOverview />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="sellers" element={<SellerApprovals />} />
+          {/* Add other admin routes */}
+        </Route>
       {/* Not Found Wildcard */}
       <Route path="*" element={<NotFound />} />
     </Routes>
