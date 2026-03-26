@@ -50,6 +50,7 @@ import AdminLayout from "./Pages/admin/Layout";
 import AdminOverview from "./Pages/admin/items/Overview";
 import UserManagement from "./Pages/admin/items/UserManagement";
 import SellerApprovals from "./Pages/admin/items/sellerApproval";
+import DeliveryProgramPage from "./Pages/deliveryProgramPage";
 
 export const AppRoutes = () => {
   return (
@@ -63,6 +64,8 @@ export const AppRoutes = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/sign-up" element={<SignUp />} />
       <Route path="/become-seller" element={<BecomeSellerPage />}/>
+      <Route path="/delivery-program" element={<DeliveryProgramPage />} />
+
 
       {/* communications routes  
        --for  partnerships 
