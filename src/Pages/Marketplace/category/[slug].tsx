@@ -5,7 +5,8 @@ import {
   SlidersHorizontal,
   Grid2X2,
   List,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { categories, products } from '../../../data/marketplace';
 import ProductCard from '../../../components/marketplace/ProductCard';
@@ -20,6 +21,7 @@ const CategoryPage: React.FC = () => {
 
   const category = categories.find(c => c.id === slug);
   const categoryProducts = products.filter(p => p.category === slug);
+  const isFashionCategory = slug === 'fashion';
 
   if (!category) {
     return (
@@ -76,6 +78,29 @@ const CategoryPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {/* AI Try-On Banner - Only for Fashion Category */}
+        {isFashionCategory && (
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 mb-6 border border-purple-100">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h3 className="text-sm font-display font-semibold text-charcoal flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  New: AI Virtual Try-On
+                </h3>
+                <p className="text-xs text-slate-text mt-1">
+                  See how clothes look on you before buying!
+                </p>
+              </div>
+              <Link
+                to="/marketplace/try-on-explain"
+                className="px-3 py-1.5 bg-white text-purple-600 rounded-lg text-xs font-medium hover:bg-purple-50 transition-colors shadow-sm"
+              >
+                Learn More
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Filters Bar */}
         <div className="flex items-center justify-between mb-6">
           <button

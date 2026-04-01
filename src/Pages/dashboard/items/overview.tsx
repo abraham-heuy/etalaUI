@@ -1,5 +1,5 @@
 // pages/dashboard/overview.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ShoppingBag, 
@@ -18,11 +18,16 @@ import {
   Store,
   Wallet,
   Calendar,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
+import { useAuth } from '../../../contexts/auth/auth';
 
 const DashboardOverview: React.FC = () => {
-  // Mock data - replace with real data from API
+  const { user, isLoading } = useAuth();
+  const [isSellerStatus, setIsSellerStatus] = useState(false);
+
+  // Mock data - will be replaced with real API calls later
   const recentOrders = [
     { id: '1234', date: '2026-03-10', total: 2450, status: 'delivered', items: 3 },
     { id: '1235', date: '2026-03-08', total: 5670, status: 'shipped', items: 2 },
@@ -30,6 +35,52 @@ const DashboardOverview: React.FC = () => {
     { id: '1237', date: '2026-03-03', total: 3240, status: 'delivered', items: 4 },
   ];
 
+  // Mock loyalty data - will be replaced with real API calls later
+  const mockLoyaltyData = {
+    points: 1250,
+    nextReward: 2000,
+    pointsValue: 1250
+  };
+
+  // Get user roles (from actual user data)
+  const getUserRoles = (): string[] => {
+    if (!user) return [];
+    
+    // User.roles is already an array from the backend
+    if (user.roles && Array.isArray(user.roles)) {
+      return user.roles;
+    }
+    
+    return ['user'];
+  };
+
+  // Check if user is a seller
+  const isSeller = () => {
+    const roles = getUserRoles();
+    return roles.includes('seller') || roles.includes('admin');
+  };
+
+  // Get user's display name (from actual user data)
+  const getDisplayName = () => {
+    if (user?.fullName) return user.fullName;
+    if (user?.email) return user.email.split('@')[0];
+    if (user?.phone) return user.phone;
+    return 'User';
+  };
+
+  // Get member since date (from actual user data)
+  const getMemberSince = () => {
+    if (user?.createdAt) {
+      return new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
+    return '2026';
+  };
+
+  useEffect(() => {
+    setIsSellerStatus(isSeller());
+  }, [user]);
+
+  // Stats with fallback mock data
   const stats = [
     { label: 'Total Orders', value: '12', icon: ShoppingBag, color: 'bg-blue-500', change: '+2 this month' },
     { label: 'Wishlist', value: '8', icon: Heart, color: 'bg-red-500', change: '3 new items' },
@@ -37,18 +88,12 @@ const DashboardOverview: React.FC = () => {
     { label: 'Payment Methods', value: '2', icon: CreditCard, color: 'bg-purple-500', change: 'Visa ••4242' },
   ];
 
-  // Mock user data
-  const user = {
-    name: 'John Doe',
-    email: 'john@example.com',
-    memberSince: 'Jan 2026',
-    isSeller: false, // Change to true to test seller view
-    loyaltyPoints: 1250,
-    pointsValue: 1250, // 1 point = KSh 1
-    nextReward: 2000,
-  };
+  // Loyalty points data - using mock for now
+  const loyaltyPoints = mockLoyaltyData.points;
+  const nextReward = mockLoyaltyData.nextReward;
+  const pointsValue = mockLoyaltyData.pointsValue;
 
-  // Active promos and offers
+  // Active promos and offers (mock data)
   const activeOffers = [
     { 
       id: 1, 
@@ -57,7 +102,6 @@ const DashboardOverview: React.FC = () => {
       code: 'FREESHIP',
       validUntil: '2026-03-31',
       discount: 0,
-      type: 'shipping',
       bg: 'bg-green-50',
       icon: Package,
       color: 'text-green-600'
@@ -69,7 +113,6 @@ const DashboardOverview: React.FC = () => {
       code: 'WEEKEND15',
       validUntil: '2026-03-15',
       discount: 15,
-      type: 'discount',
       bg: 'bg-blue-50',
       icon: Tag,
       color: 'text-blue-600'
@@ -81,21 +124,20 @@ const DashboardOverview: React.FC = () => {
       code: 'BDAY2X',
       validUntil: '2026-03-31',
       discount: 0,
-      type: 'points',
       bg: 'bg-pink-50',
       icon: Gift,
       color: 'text-pink-600'
     },
   ];
 
-  // Upcoming deals
+  // Upcoming deals (mock data)
   const upcomingDeals = [
     { day: 'Tomorrow', deal: 'Farm Fresh Friday', discount: '20% off produce' },
     { day: 'Mar 15', deal: 'Tech Tuesday', discount: 'Up to 30% off electronics' },
     { day: 'Mar 20', deal: 'Weekend Special', discount: 'Buy 1 Get 1 Free' },
   ];
 
-  // Recent activity
+  // Recent activity (mock data)
   const recentActivity = [
     { action: 'Order #1234 delivered', time: '2 hours ago', icon: Package },
     { action: 'Added item to wishlist', time: '5 hours ago', icon: Heart },
@@ -103,7 +145,7 @@ const DashboardOverview: React.FC = () => {
     { action: 'Viewed 3 products', time: '2 days ago', icon: Eye },
   ];
 
-  // Recommended products (personalized)
+  // Recommended products (mock data)
   const recommendedProducts = [
     { id: 1, name: 'iPhone 13 Pro', price: 145000, image: 'https://images.unsplash.com/photo-1632661674596-df8be6a1c9e1?w=150&h=150&fit=crop', rating: 4.8, reason: 'Based on your browsing' },
     { id: 2, name: 'Leather Jacket', price: 6500, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=150&h=150&fit=crop', rating: 4.5, reason: 'Trending in fashion' },
@@ -111,18 +153,40 @@ const DashboardOverview: React.FC = () => {
     { id: 4, name: 'Wireless Headphones', price: 3500, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150&h=150&fit=crop', rating: 4.6, reason: 'Recommended for you' },
   ];
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-sky-500 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-text">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = getDisplayName();
+  const memberSince = getMemberSince();
+  const sellerStatus = isSellerStatus;
+
   return (
     <div className="space-y-8">
       {/* Welcome Header with Loyalty Points */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-display font-bold text-charcoal">
-            Welcome back, {user.name}! 👋
+            Welcome back, {displayName}! 👋
           </h1>
           <p className="text-slate-text mt-1 flex items-center gap-2">
             <Calendar className="w-4 h-4" />
-            Member since {user.memberSince}
+            Member since {memberSince}
           </p>
+          {user?.email && (
+            <p className="text-xs text-slate-text mt-0.5">{user.email}</p>
+          )}
+          {user?.phone && !user?.email && (
+            <p className="text-xs text-slate-text mt-0.5">{user.phone}</p>
+          )}
         </div>
         
         {/* Loyalty Points Card */}
@@ -131,20 +195,20 @@ const DashboardOverview: React.FC = () => {
             <Star className="w-5 h-5 fill-white" />
             <span className="text-sm font-medium">Loyalty Points</span>
           </div>
-          <p className="text-2xl font-bold">{user.loyaltyPoints} pts</p>
-          <p className="text-xs text-white/80">Worth KSh {user.pointsValue}</p>
+          <p className="text-2xl font-bold">{loyaltyPoints} pts</p>
+          <p className="text-xs text-white/80">Worth KSh {pointsValue}</p>
           <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
             <div 
               className="h-full bg-white rounded-full"
-              style={{ width: `${(user.loyaltyPoints / user.nextReward) * 100}%` }}
+              style={{ width: `${(loyaltyPoints / nextReward) * 100}%` }}
             />
           </div>
-          <p className="text-xs mt-1">{user.nextReward - user.loyaltyPoints} pts to next reward</p>
+          <p className="text-xs mt-1">{nextReward - loyaltyPoints} pts to next reward</p>
         </div>
       </div>
 
       {/* Become a Seller CTA (if buyer only) */}
-      {!user.isSeller && (
+      {!sellerStatus && (
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -206,7 +270,7 @@ const DashboardOverview: React.FC = () => {
           {activeOffers.map((offer) => {
             const Icon = offer.icon;
             return (
-              <div key={offer.id} className={`${offer.bg} rounded-lg p-3 border border-${offer.color.replace('text-', '')}/20`}>
+              <div key={offer.id} className={`${offer.bg} rounded-lg p-3`}>
                 <div className="flex items-start justify-between mb-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${offer.bg}`}>
                     <Icon className={`w-4 h-4 ${offer.color}`} />
@@ -392,8 +456,8 @@ const DashboardOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Seller CTA (if buyer) - Alternative style */}
-      {!user.isSeller && (
+      {/* Seller CTA (if buyer) */}
+      {!sellerStatus && (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>

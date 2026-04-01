@@ -16,12 +16,14 @@ import {
   ChevronRight,
   Minus,
   Plus,
-  Store
+  Store,
+  Camera
 } from 'lucide-react';
 import { products } from '../../../data/marketplace';
 import ProductCard from '../../../components/marketplace/ProductCard';
 import CategoryNavbar from '../../../common/CategoryNavbar';
 import LoginModal from '../../../common/loginPrompt';
+import TryOnModal from '../../../Pages/Marketplace/fashion/TryOnModal';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +31,7 @@ const ProductDetailPage: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [actionType, setActionType] = useState<'cart' | 'buy' | null>(null);
+  const [showTryOnModal, setShowTryOnModal] = useState(false);
 
   const product = products.find(p => p.id === id);
   const relatedProducts = products
@@ -56,6 +59,8 @@ const ProductDetailPage: React.FC = () => {
   const discount = product.originalPrice 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
+
+  const isFashionProduct = product.category === 'fashion';
 
   const handleAddToCart = () => {
     // Check if user is logged in (mock check - replace with actual auth)
@@ -212,6 +217,23 @@ const ProductDetailPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* AI Try-On Button - Only for Fashion Products */}
+              {isFashionProduct && (
+                <div className="mb-6">
+                  <button
+                    onClick={() => setShowTryOnModal(true)}
+                    className="w-full bg-white border-2 border-sky-500 text-sky-600 py-3 rounded-xl text-sm font-medium hover:bg-sky-50 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Try On with AI
+                    <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full ml-1">BETA</span>
+                  </button>
+                  <p className="text-xs text-slate-text text-center mt-2">
+                    See how this looks on you using AI technology
+                  </p>
+                </div>
+              )}
+
               {/* Description */}
               <div className="mb-6">
                 <h3 className="text-lg font-display font-semibold text-charcoal mb-2">
@@ -306,6 +328,15 @@ const ProductDetailPage: React.FC = () => {
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         actionType={actionType}
+      />
+
+      {/* Try-On Modal */}
+      <TryOnModal
+        isOpen={showTryOnModal}
+        onClose={() => setShowTryOnModal(false)}
+        productId={product.id}
+        productName={product.name}
+        productImage={product.images[0]}
       />
     </div>
   );

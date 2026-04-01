@@ -1,4 +1,8 @@
+// AppRoutes.tsx (updated version)
 import { Routes, Route, Navigate } from "react-router-dom";
+
+
+// Import all your pages (keeping your existing imports)
 import LandingPage from "./Pages/LandingPage";
 import AboutPage from "./Pages/AboutPage";
 import DailyUpdates from "./components/about/DailyUpdates";
@@ -51,105 +55,136 @@ import AdminOverview from "./Pages/admin/items/Overview";
 import UserManagement from "./Pages/admin/items/UserManagement";
 import SellerApprovals from "./Pages/admin/items/sellerApproval";
 import DeliveryProgramPage from "./Pages/deliveryProgramPage";
+import { AuthProvider } from "./contexts/auth/auth";
+import { ProtectedRoute } from "./contexts/auth/Protected.route";
+import { SessionManager } from "./contexts/auth/sessionManager";
+import TryOnExplainPage from "./Pages/Marketplace/fashion/explain";
 
 export const AppRoutes = () => {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/about-us" element={<AboutPage />} />
-      <Route path="daily-updates" element={<DailyUpdates />} />
-      {/* get started routes */}
-      <Route path="/sign-in" element={<SignIn />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/sign-up" element={<SignUp />} />
-      <Route path="/become-seller" element={<BecomeSellerPage />}/>
-      <Route path="/delivery-program" element={<DeliveryProgramPage />} />
+    <AuthProvider>
+      <SessionManager />
+      <Routes>
+        {/* Public Routes - No authentication required */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/about-us" element={<AboutPage />} />
+        <Route path="/daily-updates" element={<DailyUpdates />} />
 
+        
+        {/* Auth Routes */}
+        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/sign-up" element={<SignUp />} />
+        
+        {/* Public marketplace routes - No auth required for browsing */}
+        <Route path="/marketplace">
+          <Route index element={<MarketplaceHome />} />
+          <Route path="category/:slug" element={<CategoryPage />} />
+          <Route path="product/:id" element={<ProductDetailPage />} />
+          <Route path="store/:id" element={<StoreDetailPage />} />
+          <Route path="try-on-explain" element={<TryOnExplainPage />} />
 
-      {/* communications routes  
-       --for  partnerships 
-       --or for reporting(contact)*/}
-         
-      <Route path="/partnership" element={<PartnerPage />}/>
-      <Route path="/contact" element={<ContactPage />}/>
+        </Route>
+        
+        <Route path="/farmers">
+          <Route index element={<FarmersHome />} />
+          <Route path="category/:slug" element={<FarmersCategoryPage />} />
+          <Route path="farmer/:id" element={<FarmerDetailPage />} />
+          <Route path="product/:id" element={<FarmerProductDetailPage />} />
 
-      <Route path="/marketplace">
-        <Route index element={<MarketplaceHome />} />
-        <Route path="category/:slug" element={<CategoryPage />} />
-        <Route path="product/:id" element={<ProductDetailPage />} />
-        <Route path="store/:id" element={<StoreDetailPage />} />
-      </Route>
-      <Route path="/farmers">
-        <Route index element={<FarmersHome />} />
-        <Route path="category/:slug" element={<FarmersCategoryPage />} />
-        <Route path="farmer/:id" element={<FarmerDetailPage />} />
-        <Route path="product/:id" element={<FarmerProductDetailPage />} />
-      </Route>
-      <Route path="/farmers/livestock">
-        <Route index element={<LivestockPage />} />
-        <Route path=":id" element={<LivestockPage />} />
-        <Route path="inquire/:id" element={<LivestockInquirePage />} />
-      </Route>
-      <Route path="/boda">
-        <Route index element={<BodaHome />} />
-        <Route path="pricing" element={<PricingPage />} />
-      </Route>
-      <Route path="/services">
-        <Route index element={<ServicesHome />} />
-        <Route path="category/:slug" element={<ServiceCategoryPage />} />
-        <Route path="provider/:id" element={<ServiceProviderPage />} />
-      </Route>
-      <Route path="/food">
-        <Route index element={<FoodHome />} />
-        <Route path="cuisine/:slug" element={<FoodCategoryPage />} />
-        <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
-        {/* <Route path="blog" element={<FoodBlogPage />} />
-        <Route path="blog/:id" element={<FoodBlogPostPage />} /> */}
-      </Route>
-      <Route path="/stays">
-        <Route index element={<StaysHome />} />
-        <Route path="category/:slug" element={<StayCategoryPage />} />
-        <Route path="property/:id" element={<PropertyDetailPage />} />
-      </Route>
-
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<Navigate to="/dashboard/overview" replace />} />
-        <Route path="overview" element={<DashboardOverview />} />
-        <Route path="orders" element={<OrdersPage />} />
-        {/* get a specific order by passing an id => in /[id] */}
-        <Route path="orders/:id" element ={<OrderDetailPage />}/>
-        <Route path="wishlist" element={<WishlistPage />} />
-        <Route path="addresses" element={<AddressesPage />} />
-        <Route path="payments" element={<PaymentsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-
-        {/* Additional seller tools: we will add conditional checking later: 
-        aslo there is another conditional checking in the  layout /layout check out */}
-        <Route path="products" element={<ProductsPage />} />
-        {/* post your products here(Listing components navigate to edit it there) */}
-        <Route path="products/new" element={<ProductNewPage />} />
-        {/* To edit a product that exists simply navigate to the route /product/edit :id */}
-        <Route path="products/edit/:id" element={<ProductEditPage />} />
-        <Route path="sales" element={<SalesPage />} />
-        {/* fetch a single order  from /[id] */}
-        <Route path="sales/:id" element={<SalesOrderDetailPage />} />
-        <Route path="earnings" element={<EarningsPage />} />
-        <Route path="reviews" element={<ReviewsPage />} />
-        <Route path="messages" element={<MessagesPage />} />
-      </Route>
-
-
-      {/* admin routes => for the admin dashboard */}
-      <Route path="/admin" element={<AdminLayout />}>
+        </Route>
+        
+        <Route path="/farmers/livestock">
+          <Route index element={<LivestockPage />} />
+          <Route path=":id" element={<LivestockPage />} />
+          <Route path="inquire/:id" element={<LivestockInquirePage />} />
+        </Route>
+        
+        <Route path="/boda">
+          <Route index element={<BodaHome />} />
+          <Route path="pricing" element={<PricingPage />} />
+        </Route>
+        
+        <Route path="/services">
+          <Route index element={<ServicesHome />} />
+          <Route path="category/:slug" element={<ServiceCategoryPage />} />
+          <Route path="provider/:id" element={<ServiceProviderPage />} />
+        </Route>
+        
+        <Route path="/food">
+          <Route index element={<FoodHome />} />
+          <Route path="cuisine/:slug" element={<FoodCategoryPage />} />
+          <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
+        </Route>
+        
+        <Route path="/stays">
+          <Route index element={<StaysHome />} />
+          <Route path="category/:slug" element={<StayCategoryPage />} />
+          <Route path="property/:id" element={<PropertyDetailPage />} />
+        </Route>
+        
+        {/* Public info pages */}
+        <Route path="/become-seller" element={<BecomeSellerPage />} />
+        <Route path="/delivery-program" element={<DeliveryProgramPage />} />
+        <Route path="/partnership" element={<PartnerPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        
+        {/* Protected Dashboard Routes - Require authentication */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard/overview" replace />} />
+          <Route path="overview" element={<DashboardOverview />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="orders/:id" element={<OrderDetailPage />} />
+          <Route path="wishlist" element={<WishlistPage />} />
+          <Route path="addresses" element={<AddressesPage />} />
+          <Route path="payments" element={<PaymentsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        
+        {/* Seller Tools - Require seller role */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute requireAuth={true} requiredRole="seller">
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/new" element={<ProductNewPage />} />
+          <Route path="products/edit/:id" element={<ProductEditPage />} />
+          <Route path="sales" element={<SalesPage />} />
+          <Route path="sales/:id" element={<SalesOrderDetailPage />} />
+          <Route path="earnings" element={<EarningsPage />} />
+          <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="messages" element={<MessagesPage />} />
+        </Route>
+        
+        {/* Admin Routes - Require admin role */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requireAuth={true} requiredRole="admin">
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<AdminOverview />} />
           <Route path="overview" element={<AdminOverview />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="sellers" element={<SellerApprovals />} />
-          {/* Add other admin routes */}
         </Route>
-      {/* Not Found Wildcard */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        
+        {/* Not Found Wildcard */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AuthProvider>
   );
 };

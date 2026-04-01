@@ -1,6 +1,6 @@
 // pages/SignIn.tsx
-import React, { useState } from 'react';
-import { 
+import React, { useState, useEffect, useRef } from 'react';
+import {
   Phone,
   Lock,
   ArrowRight,
@@ -12,10 +12,25 @@ import {
   CheckCircle,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import BackArrow from '../about/backArrow';
+import { AuthService, AuthServiceError } from '../../services/Auth/auth.service';
+
+// // ─── Google SDK types ──────────────────────────────────────────────────────────
+// declare global {
+//   interface Window {
+//     google?: {
+//       accounts: {
+//         id: {
+//           initialize: (cfg: { client_id: string; callback: (r: { credential: string }) => void }) => void;
+//           prompt: () => void;
+//         };
+//       };
+//     };
+//   }
+// }
 
 type LoginMethod = 'phone' | 'google';
 type LoginStep = 'credentials' | 'otp' | 'success';
@@ -33,115 +48,58 @@ const SignIn: React.FC = () => {
   const [error, setError] = useState('');
   const [otpTimer, setOtpTimer] = useState(60);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Handle phone input formatting
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  // ── Phone formatting ───────────────────────────────────────────────────────
+
   const formatPhoneNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
-    if (cleaned.startsWith('254')) {
-      return cleaned;
-    }
-    if (cleaned.startsWith('0')) {
-      return '254' + cleaned.slice(1);
-    }
-    if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
-      return '254' + cleaned;
-    }
+    
+    if (cleaned.startsWith('254')) return '+' + cleaned;
+    if (cleaned.startsWith('0'))   return '+254' + cleaned.slice(1);
+    if (cleaned.startsWith('7') || cleaned.startsWith('1')) return '+254' + cleaned;
+    
     return cleaned;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setPhoneNumber(formatted);
+    setPhoneNumber(formatPhoneNumber(e.target.value));
   };
 
-  // Handle OTP input
+  // ── OTP input ─────────────────────────────────────────────────────────────
+
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) return;
-    
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    // Auto-focus next input
     if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
+      document.getElementById(`otp-${index + 1}`)?.focus();
     }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      prevInput?.focus();
+      document.getElementById(`otp-${index - 1}`)?.focus();
     }
   };
 
-  // Handle credentials submission
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+  // ── OTP timer ─────────────────────────────────────────────────────────────
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock logic - in real app, check if user exists and needs OTP
-      if (phoneNumber === '254700000000' && password === 'password') {
-        // Existing user - go to success
-        setCurrentStep('success');
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1500);
-      } else if (phoneNumber === '254700000001') {
-        // First time login - needs OTP
-        setIsFirstLogin(true);
-        setCurrentStep('otp');
-        startOtpTimer();
-      } else {
-        setError('Invalid phone number or password');
-      }
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  // Handle OTP submission
-  const handleOtpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    const otpString = otp.join('');
-    if (otpString.length === 6) {
-      // Verify OTP
-      setTimeout(() => {
-        setCurrentStep('success');
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1500);
-      }, 1000);
-    } else {
-      setError('Please enter the 6-digit code');
-      setIsLoading(false);
-    }
-  };
-
-  // Handle Google login
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    // Simulate Google OAuth
-    setTimeout(() => {
-      setCurrentStep('success');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
-    }, 1500);
-  };
-
-  // Start OTP timer
   const startOtpTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
     setOtpTimer(60);
-    const timer = setInterval(() => {
-      setOtpTimer((prev) => {
+    timerRef.current = setInterval(() => {
+      setOtpTimer(prev => {
         if (prev <= 1) {
-          clearInterval(timer);
+          clearInterval(timerRef.current!);
           return 0;
         }
         return prev - 1;
@@ -149,38 +107,130 @@ const SignIn: React.FC = () => {
     }, 1000);
   };
 
-  // Resend OTP
-  const resendOtp = () => {
-    setOtpTimer(60);
-    startOtpTimer();
-    // API call to resend OTP
+  // ── Phone login ───────────────────────────────────────────────────────────
+
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await AuthService.loginPhone({ phone: phoneNumber, password, rememberMe });
+      // Successful login — no OTP required
+      setCurrentStep('success');
+      setTimeout(() => navigate('/dashboard'), 1500);
+    } catch (err) {
+      if (err instanceof AuthServiceError) {
+        // Backend signals first-time login: OTP must be verified
+        if (err.code === 'OTP_REQUIRED') {
+          setIsFirstLogin(true);
+          setCurrentStep('otp');
+          startOtpTimer();
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // ── OTP verification ──────────────────────────────────────────────────────
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const otpString = otp.join('');
+    if (otpString.length !== 6) {
+      setError('Please enter the 6-digit code.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await AuthService.verifyLoginOtp({ phone: phoneNumber, otp: otpString, rememberMe });
+      setCurrentStep('success');
+      setTimeout(() => navigate('/dashboard'), 1500);
+    } catch (err) {
+      setError(err instanceof AuthServiceError ? err.message : 'Verification failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Resend OTP ────────────────────────────────────────────────────────────
+
+  const resendOtp = async () => {
+    setError('');
+    try {
+      // Re-trigger the login call — the server resends the OTP
+      await AuthService.loginPhone({ phone: phoneNumber, password, rememberMe });
+    } catch (err) {
+      // OTP_REQUIRED is expected here; any other error is a real problem
+      if (err instanceof AuthServiceError && err.code !== 'OTP_REQUIRED') {
+        setError(err.message);
+        return;
+      }
+    }
+    startOtpTimer();
+  };
+
+  // ── Google login ──────────────────────────────────────────────────────────
+
+  const handleGoogleLogin = () => {
+    if (!window.google) {
+      setError('Google Sign-In is not available right now. Please try again later.');
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
+      callback: async ({ credential }: google.accounts.id.CredentialResponse) => {
+        setIsLoading(true);
+        setError('');
+        try {
+          await AuthService.googleAuth(credential);
+          setCurrentStep('success');
+          setTimeout(() => navigate('/dashboard'), 1500);
+        } catch (err) {
+          setError(err instanceof AuthServiceError ? err.message : 'Google sign-in failed. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      },
+    });
+
+    window.google.accounts.id.prompt();
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-soft-white to-warm-gray">
-      {/* Header with Back Arrow - Centered title for all screens */}
+      {/* Header */}
       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-sky-100">
         <div className="max-w-md mx-auto px-4">
           <div className="flex items-center justify-center h-16 relative">
-            {/* Back arrow absolutely positioned on left */}
             <div className="absolute left-0">
               <BackArrow />
             </div>
-            {/* Centered title */}
             <h1 className="text-xl font-display font-semibold text-charcoal">
               {currentStep === 'credentials' && 'Sign In'}
               {currentStep === 'otp' && 'Verify Code'}
               {currentStep === 'success' && 'Welcome!'}
             </h1>
-            {/* Empty div for balance */}
-            <div className="w-10"></div>
+            <div className="w-10" />
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-8">
-        {/* Success Animation */}
+
+        {/* ── Success ── */}
         {currentStep === 'success' && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
             <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
@@ -195,56 +245,41 @@ const SignIn: React.FC = () => {
           </div>
         )}
 
-        {/* Credentials Step */}
+        {/* ── Credentials ── */}
         {currentStep === 'credentials' && (
           <div className="space-y-6 animate-slide-up">
-            {/* Header */}
+            {/* Icon + heading */}
             <div className="text-center">
               <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Lock className="w-8 h-8 text-sky-600" />
               </div>
-              <h2 className="text-2xl font-display font-bold text-charcoal mb-2">
-                Welcome Back
-              </h2>
-              <p className="text-sm text-slate-text">
-                Sign in to continue to E-TALA
-              </p>
+              <h2 className="text-2xl font-display font-bold text-charcoal mb-2">Welcome Back</h2>
+              <p className="text-sm text-slate-text">Sign in to continue to E-TALA</p>
             </div>
 
-            {/* Login Method Toggle */}
+            {/* Method toggle */}
             <div className="flex bg-sky-50 rounded-full p-1">
-              <button
-                onClick={() => setLoginMethod('phone')}
-                className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
-                  loginMethod === 'phone'
-                    ? 'bg-white text-sky-700 shadow-sm'
-                    : 'text-sky-600 hover:text-sky-700'
-                }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  Phone
-                </span>
-              </button>
-              <button
-                onClick={() => setLoginMethod('google')}
-                className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
-                  loginMethod === 'google'
-                    ? 'bg-white text-sky-700 shadow-sm'
-                    : 'text-sky-600 hover:text-sky-700'
-                }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <Chrome className="w-4 h-4" />
-                  Google
-                </span>
-              </button>
+              {(['phone', 'google'] as LoginMethod[]).map(method => (
+                <button
+                  key={method}
+                  onClick={() => { setLoginMethod(method); setError(''); }}
+                  className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
+                    loginMethod === method
+                      ? 'bg-white text-sky-700 shadow-sm'
+                      : 'text-sky-600 hover:text-sky-700'
+                  }`}
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    {method === 'phone' ? <Phone className="w-4 h-4" /> : <Chrome className="w-4 h-4" />}
+                    {method === 'phone' ? 'Phone' : 'Google'}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            {/* Phone Login Form */}
+            {/* ── Phone form ── */}
             {loginMethod === 'phone' && (
               <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-                {/* Error Message */}
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -252,11 +287,9 @@ const SignIn: React.FC = () => {
                   </div>
                 )}
 
-                {/* Phone Number Input */}
+                {/* Phone */}
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-text ml-2">
-                    Phone Number
-                  </label>
+                  <label className="text-xs font-medium text-slate-text ml-2">Phone Number</label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
                     <input
@@ -273,52 +306,41 @@ const SignIn: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Password Input with Eye Toggle */}
+                {/* Password */}
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-medium text-slate-text ml-2">
-                      Password
-                    </label>
-                    <Link
-                      to="/forgot-password"
-                      className="text-xs text-sky-600 hover:text-sky-700 font-medium"
-                    >
+                    <label className="text-xs font-medium text-slate-text ml-2">Password</label>
+                    <Link to="/forgot-password" className="text-xs text-sky-600 hover:text-sky-700 font-medium">
                       Forgot Password?
                     </Link>
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
                     <input
-                      type={showPassword ? "text" : "password"}
+                      type={showPassword ? 'text' : 'password'}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-10 pr-12 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
                       required
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => setShowPassword(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-text/40 hover:text-sky-600 transition-colors"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Remember Me */}
+                {/* Remember me */}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setRememberMe(!rememberMe)}
+                    onClick={() => setRememberMe(v => !v)}
                     className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      rememberMe
-                        ? 'bg-sky-500 border-sky-500'
-                        : 'border-slate-text/30 bg-white'
+                      rememberMe ? 'bg-sky-500 border-sky-500' : 'border-slate-text/30 bg-white'
                     }`}
                   >
                     {rememberMe && <CheckCircle className="w-4 h-4 text-white" />}
@@ -326,77 +348,65 @@ const SignIn: React.FC = () => {
                   <span className="text-xs text-slate-text">Remember me</span>
                 </div>
 
-                {/* Submit Button */}
+                {/* Submit */}
                 <button
                   type="submit"
                   disabled={isLoading}
                   className="w-full bg-sky-500 text-white py-3.5 rounded-xl text-sm font-medium hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Signing in...
-                    </>
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
                   ) : (
-                    <>
-                      Sign In
-                      <ArrowRight className="w-4 h-4" />
-                    </>
+                    <>Sign In <ArrowRight className="w-4 h-4" /></>
                   )}
                 </button>
               </form>
             )}
 
-            {/* Google Login */}
+            {/* ── Google button ── */}
             {loginMethod === 'google' && (
               <div className="space-y-4">
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                    <p className="text-xs text-red-700">{error}</p>
+                  </div>
+                )}
                 <button
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
                   className="w-full bg-white border border-sky-200 text-charcoal py-3.5 rounded-xl text-sm font-medium hover:bg-sky-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Chrome className="w-5 h-5" />
-                  )}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Chrome className="w-5 h-5" />}
                   Continue with Google
                 </button>
                 <p className="text-xs text-center text-slate-text/70">
                   By continuing with Google, you agree to our{' '}
-                  <Link to="/terms" className="text-sky-600 hover:underline">
-                    Terms
-                  </Link>{' '}
-                  and{' '}
-                  <Link to="/privacy" className="text-sky-600 hover:underline">
-                    Privacy Policy
-                  </Link>
+                  <Link to="/terms" className="text-sky-600 hover:underline">Terms</Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" className="text-sky-600 hover:underline">Privacy Policy</Link>
                 </p>
               </div>
             )}
 
-            {/* Sign Up Link */}
+            {/* Sign up link */}
             <div className="text-center pt-4">
               <p className="text-xs text-slate-text">
                 Don't have an account?{' '}
-                <Link to="/sign-up" className="text-sky-600 font-medium hover:underline">
-                  Sign up
-                </Link>
+                <Link to="/sign-up" className="text-sky-600 font-medium hover:underline">Sign up</Link>
               </p>
             </div>
           </div>
         )}
 
-        {/* OTP Verification Step */}
+        {/* ── OTP step ── */}
         {currentStep === 'otp' && (
           <div className="space-y-6 animate-slide-up">
             <div className="text-center">
               <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Smartphone className="w-8 h-8 text-sky-600" />
               </div>
-              <h2 className="text-2xl font-display font-bold text-charcoal mb-2">
-                Verify Your Number
-              </h2>
+              <h2 className="text-2xl font-display font-bold text-charcoal mb-2">Verify Your Number</h2>
               <p className="text-sm text-slate-text">
                 We've sent a 6-digit code to{' '}
                 <span className="font-medium text-charcoal">
@@ -406,7 +416,6 @@ const SignIn: React.FC = () => {
             </div>
 
             <form onSubmit={handleOtpSubmit} className="space-y-6">
-              {/* Error Message */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -414,7 +423,7 @@ const SignIn: React.FC = () => {
                 </div>
               )}
 
-              {/* OTP Input Grid */}
+              {/* OTP boxes */}
               <div className="flex justify-center gap-2">
                 {otp.map((digit, index) => (
                   <input
@@ -424,14 +433,14 @@ const SignIn: React.FC = () => {
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    onChange={e => handleOtpChange(index, e.target.value)}
+                    onKeyDown={e => handleOtpKeyDown(index, e)}
                     className="w-12 h-14 bg-white border border-sky-200 rounded-xl text-center text-xl font-bold focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100 transition-all"
                   />
                 ))}
               </div>
 
-              {/* Timer & Resend */}
+              {/* Timer / Resend */}
               <div className="text-center">
                 {otpTimer > 0 ? (
                   <p className="text-xs text-slate-text">
@@ -449,36 +458,28 @@ const SignIn: React.FC = () => {
                 )}
               </div>
 
-              {/* Submit Button */}
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={isLoading || otp.join('').length !== 6}
                 className="w-full bg-sky-500 text-white py-3.5 rounded-xl text-sm font-medium hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Verifying...
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</>
                 ) : (
-                  <>
-                    Verify & Continue
-                    <ArrowRight className="w-4 h-4" />
-                  </>
+                  <>Verify & Continue <ArrowRight className="w-4 h-4" /></>
                 )}
               </button>
 
-              {/* First Login Info */}
+              {/* First-login info card */}
               {isFirstLogin && (
                 <div className="bg-sky-50 rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <Shield className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="text-sm font-medium text-charcoal mb-1">
-                        First time logging in?
-                      </h3>
+                      <h3 className="text-sm font-medium text-charcoal mb-1">First time logging in?</h3>
                       <p className="text-xs text-slate-text">
-                        We've sent a one-time code to verify your number. 
+                        We've sent a one-time code to verify your number.
                         You'll be able to set up your profile after verification.
                       </p>
                     </div>
@@ -487,9 +488,9 @@ const SignIn: React.FC = () => {
               )}
             </form>
 
-            {/* Back to Login */}
+            {/* Back */}
             <button
-              onClick={() => setCurrentStep('credentials')}
+              onClick={() => { setCurrentStep('credentials'); setError(''); setOtp(['', '', '', '', '', '']); }}
               className="flex items-center gap-1 text-xs text-slate-text hover:text-sky-600 transition-colors mx-auto"
             >
               <ArrowLeft className="w-3 h-3" />
@@ -502,17 +503,11 @@ const SignIn: React.FC = () => {
       {/* Footer */}
       <div className="max-w-md mx-auto px-4 py-6">
         <div className="flex justify-center gap-4 text-[10px] text-slate-text/60">
-          <Link to="/terms" className="hover:text-sky-600 transition-colors">
-            Terms
-          </Link>
+          <Link to="/terms" className="hover:text-sky-600 transition-colors">Terms</Link>
           <span>•</span>
-          <Link to="/privacy" className="hover:text-sky-600 transition-colors">
-            Privacy
-          </Link>
+          <Link to="/privacy" className="hover:text-sky-600 transition-colors">Privacy</Link>
           <span>•</span>
-          <Link to="/help" className="hover:text-sky-600 transition-colors">
-            Help
-          </Link>
+          <Link to="/help" className="hover:text-sky-600 transition-colors">Help</Link>
         </div>
       </div>
     </div>
