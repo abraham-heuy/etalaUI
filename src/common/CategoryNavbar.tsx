@@ -1,5 +1,5 @@
 // components/common/CategoryNavbar.tsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, LogIn, UserPlus, User, LogOut, ShoppingCart,
@@ -8,35 +8,11 @@ import {
 } from 'lucide-react';
 import { AuthService, type UserProfile, tokenStore } from '../services/Auth/auth.service';
 import { SlidePanel, CartItem, WishlistItem, EmptyState } from './Cart-Wishlists.modal';
-
-// ── Types for products (shared)
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  quantity?: number;
-  category: string;
-}
-
-// ── Mock data ──────────────────────────────────────────────────────────────────
-const MOCK_CART: Product[] = [
-  { id: '1', name: 'Wireless Earbuds Pro', price: 3200, image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=80&h=80&fit=crop', quantity: 1, category: 'Electronics' },
-  { id: '2', name: 'Leather Crossbody Bag', price: 1850, image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=80&h=80&fit=crop', quantity: 2, category: 'Fashion' },
-  { id: '3', name: 'Stainless Water Bottle', price: 650, image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=80&h=80&fit=crop', quantity: 1, category: 'Home' },
-];
-
-const MOCK_WISHLIST: Product[] = [
-  { id: '4', name: 'Running Shoes Ultra', price: 5400, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=80&h=80&fit=crop', category: 'Sports' },
-  { id: '5', name: 'Ceramic Coffee Mug Set', price: 980, image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=80&h=80&fit=crop', category: 'Home' },
-  { id: '6', name: 'Sunglasses Aviator', price: 2100, image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=80&h=80&fit=crop', category: 'Fashion' },
-  { id: '7', name: 'Portable Charger 20000mAh', price: 1750, image: 'https://images.unsplash.com/photo-1609592424967-5a7b7a5a3a3a?w=80&h=80&fit=crop', category: 'Electronics' },
-];
-
-// ── Main navbar ────────────────────────────────────────────────────────────────
+import { useCart } from '../contexts/commerce/cart.context';
+import { useWishlist } from '../contexts/commerce/wishlist.context';
 
 interface CategoryNavbarProps {
-  categoryName: string;
+  categoryName: string; 
   showBackButton?: boolean;
   onBack?: () => void;
 }
@@ -47,29 +23,31 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
   onBack,
 }) => {
   const navigate = useNavigate();
+  const { cart, updateQuantity, removeItem, isLoading: cartLoading } = useCart();
+  const { wishlist, removeItem: removeWishlistItem, moveToCart, isLoading: wishlistLoading } = useWishlist();
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // ── Mock state (replace with real store later) ─────────────────────────────
-  const [cartItems, setCartItems] = useState<Product[]>(MOCK_CART);
-  const [wishlistItems, setWishlistItems] = useState<Product[]>(MOCK_WISHLIST);
+  // Cart totals
+  const cartItems = cart?.items || [];
+  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const cartTotal = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const cartCount = cartItems.reduce((sum, i) => sum + (i.quantity ?? 1), 0);
+  const wishlistItems = wishlist?.items || [];
   const wishlistCount = wishlistItems.length;
-  const cartTotal = cartItems.reduce((sum, i) => sum + i.price * (i.quantity ?? 1), 0);
 
-  // ── Auth ───────────────────────────────────────────────────────────────────
+  // Auth
   useEffect(() => {
     const token = tokenStore.get();
-    if (!token) { setIsLoading(false); return; }
+    if (!token) { setIsAuthLoading(false); return; }
     AuthService.getMe()
       .then(setUser)
       .catch(() => { tokenStore.clear(); setUser(null); })
-      .finally(() => setIsLoading(false));
+      .finally(() => setIsAuthLoading(false));
   }, []);
 
   useEffect(() => {
@@ -82,7 +60,6 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
   }, []);
 
   const handleBack = () => (onBack ? onBack() : navigate(-1));
-
   const handleLogout = async () => {
     setDropdownOpen(false);
     await AuthService.logout();
@@ -90,35 +67,33 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
     navigate('/');
   };
 
-  // ── Cart actions ───────────────────────────────────────────────────────────
+  // Cart action handlers
   const handleQtyChange = (id: string, delta: number) => {
-    setCartItems(prev => prev
-      .map(i => i.id === id ? { ...i, quantity: Math.max(1, (i.quantity ?? 1) + delta) } : i)
-    );
+    const item = cartItems.find(i => i.productId === id);
+    if (!item) return;
+    const newQty = Math.max(1, item.quantity + delta);
+    updateQuantity(id, newQty).catch(console.error);
   };
 
-  const handleCartRemove = (id: string) =>
-    setCartItems(prev => prev.filter(i => i.id !== id));
+  const handleCartRemove = (id: string) => {
+    removeItem(id).catch(console.error);
+  };
 
-  // ── Wishlist actions ───────────────────────────────────────────────────────
-  const handleWishlistRemove = (id: string) =>
-    setWishlistItems(prev => prev.filter(i => i.id !== id));
+  // Wishlist handlers
+  const handleWishlistRemove = (id: string) => {
+    removeWishlistItem(id).catch(console.error);
+  };
 
-  const handleMoveToCart = (id: string) => {
-    const item = wishlistItems.find(i => i.id === id);
-    if (!item) return;
-    setCartItems(prev => {
-      const exists = prev.find(i => i.id === id);
-      if (exists) return prev.map(i => i.id === id ? { ...i, quantity: (i.quantity ?? 1) + 1 } : i);
-      return [...prev, { ...item, quantity: 1 }];
-    });
-    handleWishlistRemove(id);
+  const handleMoveToCart = (itemId: string) => {
+    moveToCart(itemId).catch(console.error);
   };
 
   const isLoggedIn = !!user;
   const initials = user?.fullName
     ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : '';
+
+  const isLoading = cartLoading || wishlistLoading || isAuthLoading;
 
   return (
     <>
@@ -229,7 +204,7 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
         </div>
       </nav>
 
-      {/* ── Cart panel ── */}
+      {/* Cart panel */}
       <SlidePanel
         open={cartOpen}
         onClose={() => setCartOpen(false)}
@@ -243,16 +218,16 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
                 <span className="text-base font-bold text-charcoal">KES {cartTotal.toLocaleString()}</span>
               </div>
               <Link
-                to="/account/cart"
+                to={`/checkout?category=${categoryName}`}
                 onClick={() => setCartOpen(false)}
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-sky-500 text-white text-sm font-medium hover:bg-sky-600 transition-colors"
               >
-                View full cart <ArrowRight className="w-4 h-4" />
+                Checkout <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           ) : (
             <Link
-              to="/shop"
+              to={`/${categoryName}`}
               onClick={() => setCartOpen(false)}
               className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-sky-50 text-sky-600 text-sm font-medium hover:bg-sky-100 transition-colors"
             >
@@ -265,16 +240,23 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
           ? <EmptyState icon={<ShoppingBag className="w-8 h-8" />} message="Your cart is empty. Add some items!" />
           : cartItems.map(item => (
             <CartItem
-              key={item.id}
-              item={item}
-              onQtyChange={handleQtyChange}
+              key={item.productId}
+              item={{
+                id: item.productId,
+                name: item.name,
+                price: item.price,
+                image: item.image || '',
+                quantity: item.quantity,
+                category: item.productType,
+              }}
+              onQtyChange={(id, delta) => handleQtyChange(id, delta)}
               onRemove={handleCartRemove}
             />
           ))
         }
       </SlidePanel>
 
-      {/* ── Wishlist panel ── */}
+      {/* Wishlist panel */}
       <SlidePanel
         open={wishlistOpen}
         onClose={() => setWishlistOpen(false)}
@@ -305,9 +287,15 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
           : wishlistItems.map(item => (
             <WishlistItem
               key={item.id}
-              item={item}
+              item={{
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                image: item.image || '',
+                category: item.productType,
+              }}
               onRemove={handleWishlistRemove}
-              onMoveToCart={handleMoveToCart}
+              onMoveToCart={() => handleMoveToCart(item.id)}
             />
           ))
         }

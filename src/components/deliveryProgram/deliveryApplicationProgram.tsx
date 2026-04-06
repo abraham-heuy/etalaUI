@@ -2,6 +2,7 @@
 import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Upload, FileText, Clock, MapPin, Bike, Car, Save } from 'lucide-react';
+import { DeliveryService } from '../../services/Auth/delivery-applcations.service';
 
 // Type definitions
 interface FormData {
@@ -735,9 +736,73 @@ const DeliveryApplicationForm: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (validateStep()) {
-      console.log('Submitting application:', formData);
+    if (!validateStep()) return;
+  
+    try {
+      const formDataToSend = new FormData();
+  
+      // Personal info
+      formDataToSend.append('fullName', formData.fullName);
+      formDataToSend.append('idNumber', formData.idNumber);
+      formDataToSend.append('phone', formData.phone);
+      if (formData.email) formDataToSend.append('email', formData.email);
+  
+      // Vehicle info
+      formDataToSend.append('vehicleType', formData.vehicleType);
+      formDataToSend.append('licenseNumber', formData.licenseNumber);
+      if (formData.vehicleRegistration) {
+        formDataToSend.append('vehicleRegistration', formData.vehicleRegistration);
+      }
+  
+      // Location & availability
+      formDataToSend.append('location', formData.location);
+      formDataToSend.append('deliveryZones', JSON.stringify(formData.deliveryZones));
+      const availabilityHours = `${formData.availabilityStart} - ${formData.availabilityEnd}`;
+      formDataToSend.append('availabilityHours', availabilityHours);
+      formDataToSend.append('availabilityDays', JSON.stringify(formData.availabilityDays));
+  
+      // Experience
+      if (formData.priorExperience) {
+        formDataToSend.append('priorExperience', formData.priorExperience);
+      }
+      formDataToSend.append('whyJoin', formData.whyJoin);
+  
+      // Files
+      if (formData.profilePhoto) {
+        formDataToSend.append('profilePhoto', formData.profilePhoto);
+      }
+  
+      // Combine all document files into a single 'documents' field (backend expects multiple files under 'documents')
+      const allDocuments: File[] = [];
+      if (formData.idFront) allDocuments.push(formData.idFront);
+      if (formData.idBack) allDocuments.push(formData.idBack);
+      if (formData.license) allDocuments.push(formData.license);
+      if (formData.vehicleDocs) allDocuments.push(formData.vehicleDocs);
+  
+      allDocuments.forEach(doc => {
+        formDataToSend.append('documents', doc);
+      });
+  
+      // Submit
+      await DeliveryService.apply(formDataToSend);
+  
+      // On success
       clearDraft();
+      alert('Application submitted successfully!');
+      // Optionally redirect or show success modal
+      window.location.href = '/delivery-program'; // or navigate using react-router
+    } catch (error: any) {
+      console.error('Submission error:', error);
+      let errorMsg = error.message || 'Submission failed. Please try again.';
+      if (error.validationErrors) {
+        const fieldErrors: Record<string, string> = {};
+        error.validationErrors.forEach((ve: any) => {
+          fieldErrors[ve.field] = ve.message;
+        });
+        setErrors(fieldErrors);
+        errorMsg = 'Please fix the highlighted fields.';
+      }
+      alert(errorMsg);
     }
   };
 

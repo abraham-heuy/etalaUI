@@ -23,6 +23,7 @@ import {
   Coffee,
   Hotel} from 'lucide-react';
 import ConfirmModal from '../common/ConfirmModal';
+import { SellerApplicationService } from '../services/Auth/seller-applications.service';
 
 type SellerCategory = 
   | 'marketplace' 
@@ -326,23 +327,84 @@ const getBusinessQuestions = (): BusinessQuestion[] => {
   // Submit application
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
-
+  
     setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Application submitted:', {
-        personalInfo,
-        category: selectedCategory === 'other' ? otherCategory : selectedCategory,
-        businessAnswers,
-        verificationMethod,
-        documents: verificationMethod === 'documents' ? documents : [],
-        physicalAddress: verificationMethod === 'physical' ? physicalAddress : null,
+    setErrors({});
+  
+    try {
+      // Build FormData
+      const formData = new FormData();
+  
+      // Personal info
+      formData.append('fullName', personalInfo.fullName);
+      formData.append('email', personalInfo.email || '');
+      formData.append('phone', personalInfo.phone);
+      formData.append('idNumber', personalInfo.idNumber);
+      formData.append('address', personalInfo.address);
+      formData.append('city', personalInfo.city);
+  
+      // Category
+      const categoryValue = selectedCategory === 'other' ? otherCategory : selectedCategory;
+      formData.append('category', categoryValue as string);
+  
+      // Business details (answers)
+      const businessAnswersJson: Record<string, string> = {};
+      businessQuestions.forEach(q => {
+        if (businessAnswers[q.id]) {
+          businessAnswersJson[q.id] = businessAnswers[q.id];
+        }
       });
-
-      setIsSubmitting(false);
+      formData.append('businessAnswers', JSON.stringify(businessAnswersJson));
+  
+      // Verification method
+      formData.append('verificationMethod', verificationMethod);
+  
+      if (verificationMethod === 'documents') {
+        // Append each document file
+        documents.forEach(file => {
+          formData.append('documents', file);
+        });
+      } else if (verificationMethod === 'physical') {
+        // Append physical visit details as JSON string
+        const physicalDetails = {
+          businessName: physicalAddress.businessName,
+          businessAddress: physicalAddress.businessAddress,
+          businessPhone: physicalAddress.businessPhone,
+          businessEmail: physicalAddress.businessEmail,
+          preferredDate: physicalAddress.preferredDate,
+          preferredTime: physicalAddress.preferredTime,
+        };
+        formData.append('physicalVisitDetails', JSON.stringify(physicalDetails));
+      } else if (verificationMethod === 'games') {
+        // Optionally send a discount amount if user played a game
+        // For now, send null or a default value; backend will handle
+        formData.append('gamesDiscount', '0');
+      }
+  
+      // Business name and description are part of the base questions
+      formData.append('businessName', businessAnswers.businessName || '');
+      formData.append('businessDescription', businessAnswers.businessDescription || '');
+  
+      const response = await SellerApplicationService.submitApplication(formData);
+      console.log('Application submitted:', response);
+  
       setShowSuccessModal(true);
-    }, 2000);
+    } catch (err: any) {
+      console.error('Submission error:', err);
+      let errorMessage = err.message || 'Submission failed. Please try again.';
+      if (err.validationErrors && err.validationErrors.length) {
+        const fieldErrors: Record<string, string> = {};
+        err.validationErrors.forEach((ve: any) => {
+          fieldErrors[ve.field] = ve.message;
+        });
+        setErrors(fieldErrors);
+        errorMessage = 'Please fix the highlighted fields.';
+      }
+      // Optionally show a toast notification
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const StepIndicator = () => (

@@ -19,7 +19,8 @@ import {
   Shield,
   MessageCircle,
   TrendingUp,
-  Loader2
+  Loader2,
+  ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../../contexts/auth/auth';
 
@@ -92,6 +93,7 @@ const DashboardLayout: React.FC = () => {
   const mainNavItems = [
     { path: '/dashboard/overview', name: 'Overview', icon: Home },
     { path: '/dashboard/orders', name: 'Orders', icon: ShoppingBag },
+    {path: '/dashboard/cart', name : 'Cart', icon: ShoppingCart},
     { path: '/dashboard/wishlist', name: 'Wishlist', icon: Heart },
     { path: '/dashboard/addresses', name: 'Addresses', icon: MapPin },
   ];

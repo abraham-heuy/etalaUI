@@ -59,6 +59,9 @@ import { AuthProvider } from "./contexts/auth/auth";
 import { ProtectedRoute } from "./contexts/auth/Protected.route";
 import { SessionManager } from "./contexts/auth/sessionManager";
 import TryOnExplainPage from "./Pages/Marketplace/fashion/explain";
+import CartPage from "./Pages/dashboard/items/cart";
+import { WishlistProvider } from "./contexts/commerce/wishlist.context";
+import { CartProvider } from "./contexts/commerce/cart.context";
 
 export const AppRoutes = () => {
   return (
@@ -70,12 +73,12 @@ export const AppRoutes = () => {
         <Route path="/about-us" element={<AboutPage />} />
         <Route path="/daily-updates" element={<DailyUpdates />} />
 
-        
+
         {/* Auth Routes */}
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/sign-up" element={<SignUp />} />
-        
+
         {/* Public marketplace routes - No auth required for browsing */}
         <Route path="/marketplace">
           <Route index element={<MarketplaceHome />} />
@@ -85,7 +88,7 @@ export const AppRoutes = () => {
           <Route path="try-on-explain" element={<TryOnExplainPage />} />
 
         </Route>
-        
+
         <Route path="/farmers">
           <Route index element={<FarmersHome />} />
           <Route path="category/:slug" element={<FarmersCategoryPage />} />
@@ -93,45 +96,45 @@ export const AppRoutes = () => {
           <Route path="product/:id" element={<FarmerProductDetailPage />} />
 
         </Route>
-        
+
         <Route path="/farmers/livestock">
           <Route index element={<LivestockPage />} />
           <Route path=":id" element={<LivestockPage />} />
           <Route path="inquire/:id" element={<LivestockInquirePage />} />
         </Route>
-        
+
         <Route path="/boda">
           <Route index element={<BodaHome />} />
           <Route path="pricing" element={<PricingPage />} />
         </Route>
-        
+
         <Route path="/services">
           <Route index element={<ServicesHome />} />
           <Route path="category/:slug" element={<ServiceCategoryPage />} />
           <Route path="provider/:id" element={<ServiceProviderPage />} />
         </Route>
-        
+
         <Route path="/food">
           <Route index element={<FoodHome />} />
           <Route path="cuisine/:slug" element={<FoodCategoryPage />} />
           <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
         </Route>
-        
+
         <Route path="/stays">
           <Route index element={<StaysHome />} />
           <Route path="category/:slug" element={<StayCategoryPage />} />
           <Route path="property/:id" element={<PropertyDetailPage />} />
         </Route>
-        
+
         {/* Public info pages */}
         <Route path="/become-seller" element={<BecomeSellerPage />} />
         <Route path="/delivery-program" element={<DeliveryProgramPage />} />
         <Route path="/partnership" element={<PartnerPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        
+
         {/* Protected Dashboard Routes - Require authentication */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute requireAuth={true}>
               <DashboardLayout />
@@ -142,15 +145,22 @@ export const AppRoutes = () => {
           <Route path="overview" element={<DashboardOverview />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="orders/:id" element={<OrderDetailPage />} />
-          <Route path="wishlist" element={<WishlistPage />} />
-          <Route path="addresses" element={<AddressesPage />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route
+            path="/dashboard/wishlist"
+            element={
+              <WishlistProvider>
+                <WishlistPage />
+              </WishlistProvider>
+            }
+          />          <Route path="addresses" element={<AddressesPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
-        
+
         {/* Seller Tools - Require seller role */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute requireAuth={true} requiredRole="seller">
               <DashboardLayout />
@@ -166,10 +176,10 @@ export const AppRoutes = () => {
           <Route path="reviews" element={<ReviewsPage />} />
           <Route path="messages" element={<MessagesPage />} />
         </Route>
-        
+
         {/* Admin Routes - Require admin role */}
-        <Route 
-          path="/admin" 
+        <Route
+          path="/admin"
           element={
             <ProtectedRoute requireAuth={true} requiredRole="admin">
               <AdminLayout />
@@ -181,7 +191,7 @@ export const AppRoutes = () => {
           <Route path="users" element={<UserManagement />} />
           <Route path="sellers" element={<SellerApprovals />} />
         </Route>
-        
+
         {/* Not Found Wildcard */}
         <Route path="*" element={<NotFound />} />
       </Routes>
