@@ -1,5 +1,5 @@
 // pages/dashboard/orders.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Package, 
@@ -10,62 +10,38 @@ import {
   Truck,
   XCircle
 } from 'lucide-react';
+import { CommerceService, type Order } from '../../../services/commerce/commerce.service';
 
 const OrdersPage: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
-  // Mock orders data
-  const orders = [
-    { 
-      id: '1234', 
-      date: '2026-03-10', 
-      total: 2450, 
-      status: 'delivered',
-      items: 3,
-      products: [
-        { name: 'Product 1', price: 1200, quantity: 1 },
-        { name: 'Product 2', price: 850, quantity: 2 },
-      ]
-    },
-    { 
-      id: '1235', 
-      date: '2026-03-08', 
-      total: 5670, 
-      status: 'shipped',
-      items: 2,
-      products: [
-        { name: 'Product 3', price: 4500, quantity: 1 },
-        { name: 'Product 4', price: 1170, quantity: 1 },
-      ]
-    },
-    { 
-      id: '1236', 
-      date: '2026-03-05', 
-      total: 1890, 
-      status: 'processing',
-      items: 1,
-      products: [
-        { name: 'Product 5', price: 1890, quantity: 1 },
-      ]
-    },
-    { 
-      id: '1237', 
-      date: '2026-03-01', 
-      total: 3240, 
-      status: 'cancelled',
-      items: 2,
-      products: [
-        { name: 'Product 6', price: 1500, quantity: 1 },
-        { name: 'Product 7', price: 1740, quantity: 1 },
-      ]
-    },
-  ];
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-  const filteredOrders = filter === 'all' 
-    ? orders 
-    : orders.filter(o => o.status === filter);
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await CommerceService.getMyOrders();
+      setOrders(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const getStatusIcon = (status: string) => {
+  const filteredOrders = orders.filter(order => {
+    if (filter !== 'all' && order.status !== filter) return false;
+    if (search && !order.id.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const getStatusIcon = (status: Order['status']) => {
     switch(status) {
       case 'delivered': return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'shipped': return <Truck className="w-4 h-4 text-blue-600" />;
@@ -75,7 +51,7 @@ const OrdersPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: Order['status']) => {
     switch(status) {
       case 'delivered': return 'bg-green-100 text-green-700';
       case 'shipped': return 'bg-blue-100 text-blue-700';
@@ -85,25 +61,84 @@ const OrdersPage: React.FC = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-4 w-64 bg-gray-200 rounded animate-pulse mt-1"></div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 h-10 bg-gray-200 rounded animate-pulse"></div>
+          <div className="w-32 h-10 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-sky-100 p-4 animate-pulse">
+              <div className="flex justify-between">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <div className="h-5 w-32 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-48 bg-gray-200 rounded mt-1"></div>
+                  </div>
+                </div>
+                <div className="w-5 h-5 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600">Error loading orders: {error}</p>
+        <button onClick={fetchOrders} className="mt-4 text-sky-600">Retry</button>
+      </div>
+    );
+  }
+
+  if (filteredOrders.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Package className="w-16 h-16 text-slate-text/30 mx-auto mb-4" />
+        <h3 className="text-lg font-display font-medium text-charcoal mb-2">No orders found</h3>
+        <p className="text-sm text-slate-text mb-4">
+          {filter !== 'all' ? `No ${filter} orders` : "You haven't placed any orders yet"}
+        </p>
+        <Link to="/marketplace" className="inline-flex items-center gap-2 bg-redbull-blue text-white px-6 py-2 rounded-full text-sm font-medium">
+          Start Shopping
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-display font-bold text-charcoal">
-          My Orders
-        </h1>
-        <p className="text-slate-text mt-1">
-          Track and manage your orders
-        </p>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-charcoal">My Orders</h1>
+        <p className="text-slate-text mt-1">Track and manage your orders</p>
       </div>
 
-      {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
           <input
             type="text"
             placeholder="Search orders by ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-white border border-sky-200 rounded-lg text-sm focus:outline-none focus:border-redbull-blue"
           />
         </div>
@@ -113,6 +148,7 @@ const OrdersPage: React.FC = () => {
           className="px-4 py-2 bg-white border border-sky-200 rounded-lg text-sm text-slate-text focus:outline-none focus:border-redbull-blue"
         >
           <option value="all">All Orders</option>
+          <option value="pending">Pending</option>
           <option value="processing">Processing</option>
           <option value="shipped">Shipped</option>
           <option value="delivered">Delivered</option>
@@ -120,7 +156,6 @@ const OrdersPage: React.FC = () => {
         </select>
       </div>
 
-      {/* Orders List */}
       <div className="space-y-3">
         {filteredOrders.map((order) => (
           <Link
@@ -136,27 +171,27 @@ const OrdersPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-display font-semibold text-charcoal">
-                      Order #{order.id}
+                      Order #{order.id.slice(-8)}
                     </h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(order.status)}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(order.status)} capitalize`}>
                       {order.status}
                     </span>
                   </div>
                   <p className="text-xs text-slate-text">
-                    {order.date} · {order.items} items · KSh {order.total}
+                    {formatDate(order.createdAt)} · {order.items.length} items · KSh {order.totalAmount.toLocaleString()}
                   </p>
                 </div>
               </div>
               <div className="flex items-center justify-between sm:justify-end gap-4">
                 <div className="flex -space-x-2">
-                  {order.products.slice(0, 3).map((p, idx) => (
+                  {order.items.slice(0, 3).map((item, idx) => (
                     <div key={idx} className="w-6 h-6 bg-sky-200 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold">
-                      {p.name.charAt(0)}
+                      {item.name.charAt(0)}
                     </div>
                   ))}
-                  {order.products.length > 3 && (
+                  {order.items.length > 3 && (
                     <div className="w-6 h-6 bg-sky-100 rounded-full border-2 border-white flex items-center justify-center text-[8px]">
-                      +{order.products.length - 3}
+                      +{order.items.length - 3}
                     </div>
                   )}
                 </div>
@@ -166,27 +201,6 @@ const OrdersPage: React.FC = () => {
           </Link>
         ))}
       </div>
-
-      {/* Empty State */}
-      {filteredOrders.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="w-16 h-16 text-slate-text/30 mx-auto mb-4" />
-          <h3 className="text-lg font-display font-medium text-charcoal mb-2">
-            No orders found
-          </h3>
-          <p className="text-sm text-slate-text mb-4">
-            {filter === 'all' 
-              ? "You haven't placed any orders yet" 
-              : `No ${filter} orders found`}
-          </p>
-          <Link
-            to="/marketplace"
-            className="inline-flex items-center gap-2 bg-redbull-blue text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-redbull-blue/90"
-          >
-            Start Shopping
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

@@ -8,7 +8,7 @@ import { SessionExpiryModal } from './expiryModal';
 export const SessionManager: React.FC = () => {
   const { checkAuth, isAuthenticated } = useAuth();
   const [showExpiryWarning, setShowExpiryWarning] = useState(false);
-  const { resetTimer } = useSessionTimeout(60); // 60 seconds for testing
+  const { resetTimer } = useSessionTimeout(120); // 120 seconds for testing
 
   useEffect(() => {
     const handleSessionExpiring = (event: CustomEvent) => {
@@ -43,7 +43,7 @@ export const SessionManager: React.FC = () => {
       isOpen={showExpiryWarning}
       onClose={() => setShowExpiryWarning(false)}
       onExtend={handleExtendSession}
-      secondsLeft={10}
+      secondsLeft={60}
     />
   );
 };

@@ -61,7 +61,7 @@ import { SessionManager } from "./contexts/auth/sessionManager";
 import TryOnExplainPage from "./Pages/Marketplace/fashion/explain";
 import CartPage from "./Pages/dashboard/items/cart";
 import { WishlistProvider } from "./contexts/commerce/wishlist.context";
-import { CartProvider } from "./contexts/commerce/cart.context";
+import Reviews from "./Pages/dashboard/items/reviews";
 
 export const AppRoutes = () => {
   return (
@@ -153,7 +153,10 @@ export const AppRoutes = () => {
                 <WishlistPage />
               </WishlistProvider>
             }
-          />          <Route path="addresses" element={<AddressesPage />} />
+          />
+          <Route path="addresses" element={<AddressesPage />} />
+          <Route path="reviews" element={<Reviews />} />
+
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
@@ -173,8 +176,9 @@ export const AppRoutes = () => {
           <Route path="sales" element={<SalesPage />} />
           <Route path="sales/:id" element={<SalesOrderDetailPage />} />
           <Route path="earnings" element={<EarningsPage />} />
-          <Route path="reviews" element={<ReviewsPage />} />
           <Route path="messages" element={<MessagesPage />} />
+          <Route path="reviews" element={<ReviewsPage />} />
+
         </Route>
 
         {/* Admin Routes - Require admin role */}

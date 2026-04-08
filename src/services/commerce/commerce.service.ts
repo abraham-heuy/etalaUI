@@ -79,6 +79,16 @@ export interface Order {
   };
   createdAt: string;
   updatedAt: string;
+  // Optional fields that might be present
+  deliveredAt?: string;
+  cancelledAt?: string;
+  estimatedDelivery?: string;
+  trackingNumber?: string;
+  timeline?: Array<{
+    date: string;
+    description: string;
+    completed: boolean;
+  }>;
 }
 
 export interface Review {

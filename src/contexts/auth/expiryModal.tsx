@@ -14,7 +14,7 @@ export const SessionExpiryModal: React.FC<SessionExpiryModalProps> = ({
   isOpen,
   onClose,
   onExtend,
-  secondsLeft = 10,
+  secondsLeft = 50,
 }) => {
   const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState(secondsLeft);
@@ -29,7 +29,7 @@ export const SessionExpiryModal: React.FC<SessionExpiryModalProps> = ({
           }
           return prev - 1;
         });
-      }, 1000);
+      }, 6000);
       return () => clearInterval(timer);
     }
   }, [isOpen, timeLeft]);
