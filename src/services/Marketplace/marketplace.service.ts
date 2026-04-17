@@ -39,6 +39,7 @@ export interface MarketplaceProduct {
   updatedAt: string;
   brand?: string;
   modelNumber?: string;
+  tags?: string[];
 }
 
 export interface MarketplaceHomeData {

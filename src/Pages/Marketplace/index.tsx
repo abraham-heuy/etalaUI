@@ -22,7 +22,6 @@ import { CartProvider } from '../../contexts/commerce/cart.context';
 import { tokenStore } from '../../services/Auth/auth.service';
 import { MarketplaceService, type MarketplaceProduct } from '../../services/Marketplace/marketplace.service';
 
-// Map MarketplaceProduct to the Product type expected by ProductCard
 const mapToProduct = (p: MarketplaceProduct) => ({
   id: p.id,
   name: p.name,
@@ -32,11 +31,17 @@ const mapToProduct = (p: MarketplaceProduct) => ({
   image: p.images?.[0] || '',
   images: p.images || [],
   rating: Number(p.rating) || 0,
-  seller: p.sellerName || 'Unknown seller',
-  sellerId: p.sellerId,
+  seller: {
+    id: p.sellerId,
+    name: p.sellerName || 'Unknown seller',
+    verified: false, // default since backend doesn't provide
+    rating: p.sellerRating || 0,
+    totalSales: p.totalSales || 0,
+    location: p.sellerLocation || 'Tala',
+  },
   reviews: p.reviewCount || 0,
   inStock: p.stockQuantity > 0,
-  tags: p.tags || [],
+  tags: p.tags || [], // ensure tags exists
   isMtush: p.isMtush,
   condition: p.condition,
   category: p.category,
