@@ -1,5 +1,5 @@
 // pages/marketplace/index.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Search, 
@@ -9,9 +9,9 @@ import {
   ArrowRight,
   Tag,
   ShoppingBag,
-  Shirt
+  Shirt,
 } from 'lucide-react';
-import { categories, products, popularStores } from '../../data/marketplace';
+import { categories, popularStores } from '../../data/marketplace';
 import ProductCard from '../../components/marketplace/ProductCard';
 import CategoryCard from '../../components/marketplace/CategoryCard';
 import StoreCard from '../../components/marketplace/StoneCard';
@@ -19,18 +19,73 @@ import GuestSlideshow from '../../components/marketplace/guestSlideShow';
 import CategoryNavbar from '../../common/CategoryNavbar';
 import { WishlistProvider } from '../../contexts/commerce/wishlist.context';
 import { CartProvider } from '../../contexts/commerce/cart.context';
-import { tokenStore } from '../../services/Auth/auth.service'; // use token store
+import { tokenStore } from '../../services/Auth/auth.service';
+import { MarketplaceService, type MarketplaceProduct } from '../../services/Marketplace/marketplace.service';
+
+// Map MarketplaceProduct to the Product type expected by ProductCard
+const mapToProduct = (p: MarketplaceProduct) => ({
+  id: p.id,
+  name: p.name,
+  description: p.description,
+  price: p.price,
+  originalPrice: p.originalPrice,
+  image: p.images?.[0] || '',
+  images: p.images || [],
+  rating: Number(p.rating) || 0,
+  seller: p.sellerName || 'Unknown seller',
+  sellerId: p.sellerId,
+  reviews: p.reviewCount || 0,
+  inStock: p.stockQuantity > 0,
+  tags: p.tags || [],
+  isMtush: p.isMtush,
+  condition: p.condition,
+  category: p.category,
+  subcategory: p.subcategory,
+  createdAt: p.createdAt,
+  brand: p.brand,
+  modelNumber: p.modelNumber,
+});
 
 const MarketplaceHome: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory] = useState<string>('all');
-  
-  // Filter products
-  const newProducts = products.filter(p => !p.isMtush).slice(0, 4);
-  const mtushProducts = products.filter(p => p.isMtush && p.category === 'fashion').slice(0, 4);
-  const featuredProducts = products.filter(p => p.rating >= 4.8).slice(0, 4);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [homeData, setHomeData] = useState<{
+    featuredProducts: MarketplaceProduct[];
+    newArrivals: MarketplaceProduct[];
+    deals: MarketplaceProduct[];
+    trending: MarketplaceProduct[];
+  }>({
+    featuredProducts: [],
+    newArrivals: [],
+    deals: [],
+    trending: [],
+  });
 
-  // Check if user is logged in via token
+  useEffect(() => {
+    fetchHomeData();
+  }, []);
+
+  const fetchHomeData = async () => {
+    try {
+      setLoading(true);
+      const data = await MarketplaceService.getHome();
+      // The backend returns: { featured, flashSales, newArrivals, mtush, categories, topSellers }
+      // We'll map accordingly. The service's getHome returns data.data, which includes these.
+      setHomeData({
+        featuredProducts: data.featured || [],
+        newArrivals: data.newArrivals || [],
+        deals: data.flashSales || [],
+        trending: data.mtush || [],
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isLoggedIn = !!tokenStore.get();
 
   const slideshowItems = [
@@ -57,13 +112,31 @@ const MarketplaceHome: React.FC = () => {
     }
   ];
 
+  const ProductSkeleton = () => (
+    <div className="bg-white rounded-xl border border-sky-100 p-3 animate-pulse">
+      <div className="h-40 bg-gray-200 rounded-lg mb-3"></div>
+      <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    </div>
+  );
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Failed to load marketplace: {error}</p>
+          <button onClick={fetchHomeData} className="mt-4 text-sky-600">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <WishlistProvider>
       <CartProvider category="marketplace">
         <div className="min-h-screen bg-soft-white">
           <CategoryNavbar categoryName="Marketplace" showBackButton={true} />
 
-          {/* Header Section */}
           <div className="bg-gradient-to-b from-sky-50 to-white border-b border-sky-100 pt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -75,7 +148,6 @@ const MarketplaceHome: React.FC = () => {
                     Discover amazing products from local sellers in Tala
                   </p>
                 </div>
-                
                 <div className="w-full md:w-96">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-text/40" />
@@ -113,7 +185,6 @@ const MarketplaceHome: React.FC = () => {
             </div>
           </div>
 
-          {/* Guest Slideshow - only for non-logged-in users */}
           {!isLoggedIn && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
               <GuestSlideshow items={slideshowItems} />
@@ -121,18 +192,14 @@ const MarketplaceHome: React.FC = () => {
           )}
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
-            {/* Categories Grid */}
+            {/* Categories Grid (static for now) */}
             <section>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-display font-semibold text-charcoal">
                   Shop by Category
                 </h2>
-                <Link 
-                  to="/marketplace/categories"
-                  className="text-sm text-sky-600 hover:text-sky-700 flex items-center gap-1"
-                >
-                  View all
-                  <ChevronRight className="w-4 h-4" />
+                <Link to="/marketplace/categories" className="text-sm text-sky-600 hover:text-sky-700 flex items-center gap-1">
+                  View all <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -146,48 +213,29 @@ const MarketplaceHome: React.FC = () => {
             <section>
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl font-display font-semibold text-charcoal">
-                    Featured Products
-                  </h2>
-                  <p className="text-sm text-slate-text mt-1">
-                    Top-rated items from verified sellers
-                  </p>
+                  <h2 className="text-2xl font-display font-semibold text-charcoal">Featured Products</h2>
+                  <p className="text-sm text-slate-text mt-1">Top-rated items from verified sellers</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === 'grid' 
-                        ? 'bg-sky-100 text-sky-600' 
-                        : 'text-slate-text hover:bg-sky-50'
-                    }`}
-                    aria-label="Grid view"
-                  >
+                  <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-sky-100 text-sky-600' : 'text-slate-text hover:bg-sky-50'}`}>
                     <Grid2X2 className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === 'list' 
-                        ? 'bg-sky-100 text-sky-600' 
-                        : 'text-slate-text hover:bg-sky-50'
-                    }`}
-                    aria-label="List view"
-                  >
+                  <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-sky-100 text-sky-600' : 'text-slate-text hover:bg-sky-50'}`}>
                     <List className="w-5 h-5" />
                   </button>
                 </div>
               </div>
-
-              <div className={
-                viewMode === 'grid' 
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' 
-                  : 'space-y-3'
-              }>
-                {featuredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} viewMode={viewMode} />
-                ))}
-              </div>
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => <ProductSkeleton key={i} />)}
+                </div>
+              ) : (
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
+                  {homeData.featuredProducts.map((product) => (
+                    <ProductCard key={product.id} product={mapToProduct(product)} viewMode={viewMode} />
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* Think Twice (Mtush) Section */}
@@ -201,32 +249,23 @@ const MarketplaceHome: React.FC = () => {
                     <h2 className="text-2xl font-display font-semibold text-charcoal">
                       Think Twice <span className="text-amber-600">(Mtush)</span>
                     </h2>
-                    <p className="text-sm text-slate-text">
-                      Pre-loved fashion & clothing at great prices
-                    </p>
+                    <p className="text-sm text-slate-text">Pre-loved fashion & clothing at great prices</p>
                   </div>
                 </div>
-                <Link
-                  to="/marketplace/mtush"
-                  className="inline-flex items-center gap-2 text-amber-700 bg-amber-100 px-4 py-2 rounded-full text-sm font-medium hover:bg-amber-200 transition-colors"
-                >
-                  Browse all Mtush items
-                  <ArrowRight className="w-4 h-4" />
+                <Link to="/marketplace/mtush" className="inline-flex items-center gap-2 text-amber-700 bg-amber-100 px-4 py-2 rounded-full text-sm font-medium hover:bg-amber-200 transition-colors">
+                  Browse all Mtush items <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {mtushProducts.length > 0 ? (
-                  mtushProducts.map((product) => (
-                    <div key={product.id} className="relative">
-                      <ProductCard product={product} viewMode="grid" />
-                      <div className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                        <Tag className="w-3 h-3" />
-                        Pre-loved
-                      </div>
+                {homeData.trending.slice(0, 4).map((product) => (
+                  <div key={product.id} className="relative">
+                    <ProductCard product={mapToProduct(product)} viewMode="grid" />
+                    <div className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                      <Tag className="w-3 h-3" /> Pre-loved
                     </div>
-                  ))
-                ) : (
+                  </div>
+                ))}
+                {homeData.trending.length === 0 && (
                   <div className="col-span-4 text-center py-8 bg-white/50 rounded-xl">
                     <Shirt className="w-12 h-12 text-amber-300 mx-auto mb-3" />
                     <p className="text-sm text-slate-text">No pre-loved items yet</p>
@@ -236,18 +275,12 @@ const MarketplaceHome: React.FC = () => {
               </div>
             </section>
 
-            {/* Popular Stores */}
+            {/* Popular Stores (static) */}
             <section>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-display font-semibold text-charcoal">
-                  Popular Stores
-                </h2>
-                <Link 
-                  to="/marketplace/stores"
-                  className="text-sm text-sky-600 hover:text-sky-700 flex items-center gap-1"
-                >
-                  View all
-                  <ChevronRight className="w-4 h-4" />
+                <h2 className="text-2xl font-display font-semibold text-charcoal">Popular Stores</h2>
+                <Link to="/marketplace/stores" className="text-sm text-sky-600 hover:text-sky-700 flex items-center gap-1">
+                  View all <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -261,19 +294,21 @@ const MarketplaceHome: React.FC = () => {
             <section>
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl font-display font-semibold text-charcoal">
-                    New Arrivals
-                  </h2>
-                  <p className="text-sm text-slate-text mt-1">
-                    Fresh from our sellers
-                  </p>
+                  <h2 className="text-2xl font-display font-semibold text-charcoal">New Arrivals</h2>
+                  <p className="text-sm text-slate-text mt-1">Fresh from our sellers</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {newProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} viewMode="grid" />
-                ))}
-              </div>
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => <ProductSkeleton key={i} />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {homeData.newArrivals.slice(0, 4).map((product) => (
+                    <ProductCard key={product.id} product={mapToProduct(product)} viewMode="grid" />
+                  ))}
+                </div>
+              )}
             </section>
           </div>
         </div>

@@ -1,5 +1,5 @@
 // pages/dashboard/products.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Package, 
@@ -8,101 +8,139 @@ import {
   Trash2,
   Eye,
   Copy,
-  Search
+  Search,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import ConfirmModal from '../../../common/ConfirmModal';
+import { ProductService } from '../../../services/products/product.service'
 
-interface Product {
+type ProductType = 'marketplace' | 'farmers' | 'food' | 'stays' | 'boda' | 'services';
+
+interface UnifiedProduct {
   id: string;
   name: string;
   price: number;
-  stock: number;
-  sold: number;
-  status: string;
-  views: number;
-  rating: number;
+  stock?: number;
+  sold?: number;
+  status: 'active' | 'inactive' | 'out_of_stock';
+  views?: number;
+  rating?: number;
   image: string;
-  category: string;
+  category: string;  // human-readable category
+  productType: ProductType;
   createdAt: string;
+  // original product object for later use (e.g., delete)
+  original: any;
 }
 
 const ProductsPage: React.FC = () => {
+  const [products, setProducts] = useState<UnifiedProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; product: Product | null }>({
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; product: UnifiedProduct | null }>({
     isOpen: false,
     product: null,
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Mock products data
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: '1',
-      name: 'iPhone 13 Pro Max',
-      price: 145000,
-      stock: 5,
-      sold: 12,
-      status: 'active',
-      views: 345,
-      rating: 4.8,
-      image: 'https://images.unsplash.com/photo-1632661674596-df8be6a1c9e1?w=100&h=100&fit=crop',
-      category: 'Electronics',
-      createdAt: '2026-03-01',
-    },
-    {
-      id: '2',
-      name: 'Men\'s Leather Jacket',
-      price: 6500,
-      stock: 8,
-      sold: 23,
-      status: 'active',
-      views: 567,
-      rating: 4.5,
-      image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=100&h=100&fit=crop',
-      category: 'Fashion',
-      createdAt: '2026-02-15',
-    },
-    {
-      id: '3',
-      name: 'Fresh Farm Eggs (Tray)',
-      price: 450,
-      stock: 0,
-      sold: 156,
-      status: 'out_of_stock',
-      views: 890,
-      rating: 4.9,
-      image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=100&h=100&fit=crop',
-      category: 'Farmers Market',
-      createdAt: '2026-01-20',
-    },
-    {
-      id: '4',
-      name: 'Wireless Headphones',
-      price: 3500,
-      stock: 3,
-      sold: 45,
-      status: 'active',
-      views: 234,
-      rating: 4.6,
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop',
-      category: 'Electronics',
-      createdAt: '2026-03-05',
-    },
-    {
-      id: '5',
-      name: 'Handmade Beaded Jewelry',
-      price: 1200,
-      stock: 15,
-      sold: 8,
-      status: 'draft',
-      views: 67,
-      rating: 0,
-      image: 'https://images.unsplash.com/photo-1611085583191-0a1a3f6b5b5a?w=100&h=100&fit=crop',
-      category: 'Handicrafts',
-      createdAt: '2026-03-10',
-    },
-  ]);
+  useEffect(() => {
+    fetchAllProducts();
+  }, []);
+
+  const fetchAllProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch products from all categories concurrently
+      const [
+        marketplaceProducts,
+        farmersProducts,
+        foodProducts,
+        staysProducts,
+        bodaProducts,
+        servicesProducts
+      ] = await Promise.all([
+        ProductService.marketplace.getMyProducts().catch(() => []),
+        ProductService.farmers.getMyProducts().catch(() => []),
+        ProductService.food.getMyProducts().catch(() => []),
+        ProductService.stays.getMyProducts().catch(() => []),
+        ProductService.boda.getMyProducts().catch(() => []),
+        ProductService.services.getMyProducts().catch(() => [])
+      ]);
+
+      // Helper to convert to UnifiedProduct
+      const mapProduct = (p: any, type: ProductType, defaultCategory: string): UnifiedProduct => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        stock: p.stock ?? (p.quantity ?? 0), // for some types stock may be called quantity
+        sold: (p as any).sold ?? 0,   // backend might not provide sold count yet
+        status: (p.stock === 0 || p.isAvailable === false) ? 'out_of_stock' : 'active',
+        views: (p as any).views ?? 0,
+        rating: (p as any).rating ?? 0,
+        image: p.images?.[0] || 'https://via.placeholder.com/100x100?text=No+Image',
+        category: (p as any).category || (p as any).cuisine || (p as any).serviceType || (p as any).vehicleType || defaultCategory,
+        productType: type,
+        createdAt: p.createdAt,
+        original: p,
+      });
+
+      const unified: UnifiedProduct[] = [
+        ...marketplaceProducts.map(p => mapProduct(p, 'marketplace', p.category || 'Marketplace')),
+        ...farmersProducts.map(p => mapProduct(p, 'farmers', 'Farmers Market')),
+        ...foodProducts.map(p => mapProduct(p, 'food', p.cuisine || 'Food')),
+        ...staysProducts.map(p => mapProduct(p, 'stays', p.location || 'Stays')),
+        ...bodaProducts.map(p => mapProduct(p, 'boda', p.vehicleType || 'Boda')),
+        ...servicesProducts.map(p => mapProduct(p, 'services', p.serviceType || 'Services')),
+      ];
+
+      setProducts(unified);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!deleteModal.product) return;
+    setIsDeleting(true);
+    try {
+      const { product } = deleteModal;
+      // Call appropriate delete method based on product type
+      switch (product.productType) {
+        case 'marketplace':
+          await ProductService.marketplace.delete(product.id);
+          break;
+        case 'farmers':
+          await ProductService.farmers.delete(product.id);
+          break;
+        case 'food':
+          await ProductService.food.delete(product.id);
+          break;
+        case 'stays':
+          await ProductService.stays.delete(product.id);
+          break;
+        case 'boda':
+          await ProductService.boda.delete(product.id);
+          break;
+        case 'services':
+          await ProductService.services.delete(product.id);
+          break;
+      }
+      // Remove from local state
+      setProducts(prev => prev.filter(p => p.id !== product.id));
+      setDeleteModal({ isOpen: false, product: null });
+    } catch (err: any) {
+      alert('Failed to delete product: ' + err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filteredProducts = products.filter(p => {
     if (filter !== 'all' && p.status !== filter) return false;
@@ -114,32 +152,33 @@ const ProductsPage: React.FC = () => {
     totalProducts: products.length,
     activeProducts: products.filter(p => p.status === 'active').length,
     outOfStock: products.filter(p => p.status === 'out_of_stock').length,
-    totalViews: products.reduce((sum, p) => sum + p.views, 0),
-    totalSales: products.reduce((sum, p) => sum + p.sold, 0),
-    revenue: products.reduce((sum, p) => sum + (p.price * p.sold), 0),
+    totalViews: products.reduce((sum, p) => sum + (p.views || 0), 0),
+    totalSales: products.reduce((sum, p) => sum + (p.sold || 0), 0),
+    revenue: products.reduce((sum, p) => sum + (p.price * (p.sold || 0)), 0),
   };
 
-  const handleDeleteClick = (product: Product) => {
-    setDeleteModal({ isOpen: true, product });
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-sky-500 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-text">Loading your products...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteModal.product) return;
-    
-    setIsDeleting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      // Remove product from state
-      setProducts(prev => prev.filter(p => p.id !== deleteModal.product?.id));
-      
-      setIsDeleting(false);
-      setDeleteModal({ isOpen: false, product: null });
-      
-      // Show success message (you could add a toast notification here)
-      console.log('Product deleted successfully');
-    }, 1500);
-  };
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <p className="text-red-600">Failed to load products: {error}</p>
+        <button onClick={fetchAllProducts} className="mt-4 text-sky-600 hover:underline">
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -210,7 +249,6 @@ const ProductsPage: React.FC = () => {
           <option value="all">All Products</option>
           <option value="active">Active</option>
           <option value="out_of_stock">Out of Stock</option>
-          <option value="draft">Drafts</option>
         </select>
       </div>
 
@@ -244,11 +282,11 @@ const ProductsPage: React.FC = () => {
                   <td className="py-3 px-4 font-medium">KSh {product.price.toLocaleString()}</td>
                   <td className="py-3 px-4">
                     <span className={product.stock === 0 ? 'text-red-600' : 'text-green-600'}>
-                      {product.stock}
+                      {product.stock ?? 'N/A'}
                     </span>
                   </td>
-                  <td className="py-3 px-4">{product.sold}</td>
-                  <td className="py-3 px-4">{product.views}</td>
+                  <td className="py-3 px-4">{product.sold ?? 0}</td>
+                  <td className="py-3 px-4">{product.views ?? 0}</td>
                   <td className="py-3 px-4">
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       product.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -270,7 +308,7 @@ const ProductsPage: React.FC = () => {
                         <Copy className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(product)}
+                        onClick={() => setDeleteModal({ isOpen: true, product })}
                         className="p-1 hover:text-red-600"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -295,7 +333,7 @@ const ProductsPage: React.FC = () => {
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, product: null })}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={handleDeleteProduct}
         title="Delete Product"
         message={`Are you sure you want to delete "${deleteModal.product?.name}"? This action cannot be undone.`}
         confirmText="Delete"

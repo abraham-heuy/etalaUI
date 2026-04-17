@@ -1,5 +1,5 @@
 // pages/admin/SellerApprovals.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Store,
   CheckCircle,
@@ -10,75 +10,81 @@ import {
   FileText,
   Building,
   User,
-  Clock
+  Clock,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
-
-interface SellerApplication {
-  id: string;
-  businessName: string;
-  ownerName: string;
-  email: string;
-  phone: string;
-  address: string;
-  businessType: string;
-  registrationNumber: string;
-  taxId: string;
-  documents: string[];
-  status: 'pending' | 'approved' | 'rejected';
-  submittedDate: string;
-  description: string;
-}
+import { SellerApplicationService, type SellerApplication } from '../../../services/Auth/seller-applications.service';
 
 const SellerApprovals: React.FC = () => {
+  const [applications, setApplications] = useState<SellerApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<SellerApplication | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Mock applications data
-  const applications: SellerApplication[] = [
-    {
-      id: 'APP-001',
-      businessName: 'Tech Haven Store',
-      ownerName: 'John Doe',
-      email: 'john@techhaven.com',
-      phone: '+1234567890',
-      address: '123 Tech Street, Silicon Valley, CA',
-      businessType: 'Electronics',
-      registrationNumber: 'BUS-12345',
-      taxId: 'TAX-98765',
-      documents: ['business_license.pdf', 'tax_certificate.pdf'],
-      status: 'pending',
-      submittedDate: '2024-03-15',
-      description: 'A premium electronics store specializing in latest gadgets and accessories.'
-    },
-    {
-      id: 'APP-002',
-      businessName: 'Fashion Forward',
-      ownerName: 'Jane Smith',
-      email: 'jane@fashionforward.com',
-      phone: '+1234567891',
-      address: '456 Fashion Ave, New York, NY',
-      businessType: 'Clothing',
-      registrationNumber: 'BUS-23456',
-      taxId: 'TAX-87654',
-      documents: ['business_license.pdf', 'brand_certificate.pdf'],
-      status: 'pending',
-      submittedDate: '2024-03-14',
-      description: 'Trendy clothing store featuring latest fashion trends.'
-    },
-  ];
+  useEffect(() => {
+    fetchApplications();
+  }, []);
 
-  const handleApprove = (id: string) => {
-    console.log('Approving application:', id);
-    setShowModal(false);
+  const fetchApplications = async () => {
+    try {
+      setLoading(true);
+      const response = await SellerApplicationService.listAll();
+      setApplications(response.data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (id: string) => {
-    console.log('Rejecting application:', id);
-    setShowModal(false);
+  const handleApprove = async (id: string) => {
+    if (!window.confirm('Are you sure you want to approve this application?')) return;
+    setActionLoading(true);
+    try {
+      await SellerApplicationService.approve(id);
+      await fetchApplications(); // Refresh list
+      setShowModal(false);
+    } catch (err: any) {
+      alert('Failed to approve: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleViewDetails = (application: SellerApplication) => {
+  const handleReject = async (id: string) => {
+    if (!rejectReason.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await SellerApplicationService.reject(id, rejectReason);
+      await fetchApplications();
+      setShowRejectModal(false);
+      setRejectReason('');
+      setShowModal(false);
+    } catch (err: any) {
+      alert('Failed to reject: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openRejectModal = (application: SellerApplication) => {
     setSelectedApplication(application);
+    setRejectReason('');
+    setShowRejectModal(true);
+    setShowModal(false);
+  };
+
+  const viewDetails = (app: SellerApplication) => {
+    setSelectedApplication(app);
     setShowModal(true);
   };
 
@@ -90,6 +96,34 @@ const SellerApprovals: React.FC = () => {
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-700';
   };
+
+  // Compute stats
+  const pendingCount = applications.filter(a => a.status === 'pending').length;
+  const approvedCount = applications.filter(a => a.status === 'approved').length;
+  const rejectedCount = applications.filter(a => a.status === 'rejected').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-sky-500 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-text">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <p className="text-red-600">Failed to load applications: {error}</p>
+        <button onClick={fetchApplications} className="mt-4 text-sky-600 hover:underline">
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -105,7 +139,7 @@ const SellerApprovals: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-text">Pending Approvals</p>
-              <p className="text-2xl font-bold text-yellow-600">8</p>
+              <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
           </div>
@@ -113,8 +147,8 @@ const SellerApprovals: React.FC = () => {
         <div className="bg-white rounded-xl p-4 border border-sky-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-text">Approved This Month</p>
-              <p className="text-2xl font-bold text-green-600">12</p>
+              <p className="text-sm text-slate-text">Approved</p>
+              <p className="text-2xl font-bold text-green-600">{approvedCount}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
@@ -123,7 +157,7 @@ const SellerApprovals: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-text">Rejected</p>
-              <p className="text-2xl font-bold text-red-600">3</p>
+              <p className="text-2xl font-bold text-red-600">{rejectedCount}</p>
             </div>
             <XCircle className="w-8 h-8 text-red-500" />
           </div>
@@ -142,7 +176,7 @@ const SellerApprovals: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-charcoal">{app.businessName}</h3>
-                    <p className="text-sm text-slate-text">Submitted: {app.submittedDate}</p>
+                    <p className="text-sm text-slate-text">Submitted: {new Date(app.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(app.status)}`}>
@@ -153,11 +187,11 @@ const SellerApprovals: React.FC = () => {
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm text-slate-text">
                   <User className="w-4 h-4" />
-                  <span>Owner: {app.ownerName}</span>
+                  <span>Owner: {app.fullName}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-text">
                   <Mail className="w-4 h-4" />
-                  <span>{app.email}</span>
+                  <span>{app.email || 'N/A'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-text">
                   <Phone className="w-4 h-4" />
@@ -165,17 +199,17 @@ const SellerApprovals: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-text">
                   <Building className="w-4 h-4" />
-                  <span>{app.businessType}</span>
+                  <span>{app.category}</span>
                 </div>
               </div>
 
               <p className="text-sm text-slate-text mb-4 line-clamp-2">
-                {app.description}
+                {app.businessDescription}
               </p>
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleViewDetails(app)}
+                  onClick={() => viewDetails(app)}
                   className="flex-1 px-4 py-2 text-sm bg-sky-50 text-slate-text rounded-lg hover:bg-sky-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <Eye className="w-4 h-4" />
@@ -185,14 +219,16 @@ const SellerApprovals: React.FC = () => {
                   <>
                     <button
                       onClick={() => handleApprove(app.id)}
-                      className="flex-1 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                      disabled={actionLoading}
+                      className="flex-1 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Approve
                     </button>
                     <button
-                      onClick={() => handleReject(app.id)}
-                      className="flex-1 px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                      onClick={() => openRejectModal(app)}
+                      disabled={actionLoading}
+                      className="flex-1 px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <XCircle className="w-4 h-4" />
                       Reject
@@ -205,7 +241,16 @@ const SellerApprovals: React.FC = () => {
         ))}
       </div>
 
-      {/* Modal for Viewing Details */}
+      {/* Empty state */}
+      {applications.length === 0 && (
+        <div className="text-center py-12">
+          <Store className="w-16 h-16 text-slate-text/30 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-charcoal mb-2">No Applications</h3>
+          <p className="text-sm text-slate-text">No seller applications found.</p>
+        </div>
+      )}
+
+      {/* View Details Modal */}
       {showModal && selectedApplication && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -232,16 +277,12 @@ const SellerApprovals: React.FC = () => {
                     <p className="font-medium text-charcoal">{selectedApplication.businessName}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-text">Business Type</p>
-                    <p className="font-medium text-charcoal">{selectedApplication.businessType}</p>
+                    <p className="text-sm text-slate-text">Category</p>
+                    <p className="font-medium text-charcoal capitalize">{selectedApplication.category}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-slate-text">Registration Number</p>
-                    <p className="font-medium text-charcoal">{selectedApplication.registrationNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-text">Tax ID</p>
-                    <p className="font-medium text-charcoal">{selectedApplication.taxId}</p>
+                  <div className="md:col-span-2">
+                    <p className="text-sm text-slate-text">Description</p>
+                    <p className="text-sm text-charcoal">{selectedApplication.businessDescription}</p>
                   </div>
                 </div>
               </div>
@@ -255,65 +296,112 @@ const SellerApprovals: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-slate-text">Full Name</p>
-                    <p className="font-medium text-charcoal">{selectedApplication.ownerName}</p>
+                    <p className="font-medium text-charcoal">{selectedApplication.fullName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-text">ID Number</p>
+                    <p className="font-medium text-charcoal">{selectedApplication.idNumber}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-text">Email</p>
-                    <p className="font-medium text-charcoal">{selectedApplication.email}</p>
+                    <p className="font-medium text-charcoal">{selectedApplication.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-text">Phone</p>
                     <p className="font-medium text-charcoal">{selectedApplication.phone}</p>
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <p className="text-sm text-slate-text">Address</p>
-                    <p className="font-medium text-charcoal">{selectedApplication.address}</p>
+                    <p className="font-medium text-charcoal">{selectedApplication.address}, {selectedApplication.city}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Documents */}
+              {/* Verification Method */}
               <div>
                 <h3 className="text-lg font-semibold text-charcoal mb-3 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Submitted Documents
+                  Verification Method
                 </h3>
-                <div className="space-y-2">
-                  {selectedApplication.documents.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-sky-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-redbull-blue" />
-                        <span className="text-sm text-charcoal">{doc}</span>
-                      </div>
-                      <button className="text-sm text-redbull-blue hover:underline">View</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <h3 className="text-lg font-semibold text-charcoal mb-3">Business Description</h3>
-                <p className="text-slate-text">{selectedApplication.description}</p>
+                <p className="text-sm text-charcoal capitalize">{selectedApplication.verificationMethod}</p>
+                {selectedApplication.verificationMethod === 'documents' && selectedApplication.documentPaths && (
+                  <div className="mt-2">
+                    <p className="text-sm text-slate-text">Documents uploaded: {selectedApplication.documentPaths.length}</p>
+                  </div>
+                )}
+                {selectedApplication.verificationMethod === 'physical' && selectedApplication.physicalVisitDetails && (
+                  <div className="mt-2 p-3 bg-sky-50 rounded-lg text-sm">
+                    <p><strong>Business:</strong> {selectedApplication.physicalVisitDetails.businessName}</p>
+                    <p><strong>Address:</strong> {selectedApplication.physicalVisitDetails.businessAddress}</p>
+                    <p><strong>Phone:</strong> {selectedApplication.physicalVisitDetails.businessPhone}</p>
+                    <p><strong>Email:</strong> {selectedApplication.physicalVisitDetails.businessEmail}</p>
+                    <p><strong>Preferred Date:</strong> {selectedApplication.physicalVisitDetails.preferredDate}</p>
+                    <p><strong>Time:</strong> {selectedApplication.physicalVisitDetails.preferredTime}</p>
+                  </div>
+                )}
+                {selectedApplication.verificationMethod === 'games' && (
+                  <p className="text-sm text-green-600 mt-1">Games discount: {selectedApplication.gamesDiscount}%</p>
+                )}
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-sky-100">
-                <button
-                  onClick={() => handleApprove(selectedApplication.id)}
-                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Approve Application
-                </button>
-                <button
-                  onClick={() => handleReject(selectedApplication.id)}
-                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <XCircle className="w-4 h-4" />
-                  Reject Application
-                </button>
-              </div>
+              {selectedApplication.status === 'pending' && (
+                <div className="flex gap-3 pt-4 border-t border-sky-100">
+                  <button
+                    onClick={() => handleApprove(selectedApplication.id)}
+                    disabled={actionLoading}
+                    className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Approve Application
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      openRejectModal(selectedApplication);
+                    }}
+                    disabled={actionLoading}
+                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reject Application
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Reason Modal */}
+      {showRejectModal && selectedApplication && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-charcoal mb-4">Reject Application</h2>
+            <p className="text-sm text-slate-text mb-2">
+              Please provide a reason for rejecting <strong>{selectedApplication.businessName}</strong>
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-sky-200 rounded-lg focus:outline-none focus:border-redbull-blue"
+              placeholder="Enter rejection reason..."
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="flex-1 px-4 py-2 border border-sky-200 text-slate-text rounded-lg hover:bg-sky-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleReject(selectedApplication.id)}
+                disabled={actionLoading || !rejectReason.trim()}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50"
+              >
+                {actionLoading ? 'Processing...' : 'Confirm Reject'}
+              </button>
             </div>
           </div>
         </div>

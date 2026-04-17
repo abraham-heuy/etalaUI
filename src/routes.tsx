@@ -62,6 +62,7 @@ import TryOnExplainPage from "./Pages/Marketplace/fashion/explain";
 import CartPage from "./Pages/dashboard/items/cart";
 import { WishlistProvider } from "./contexts/commerce/wishlist.context";
 import Reviews from "./Pages/dashboard/items/reviews";
+import SellerApplicationPage from "./Pages/dashboard/sellerTools.tsx/seller-application";
 
 export const AppRoutes = () => {
   return (
@@ -159,6 +160,7 @@ export const AppRoutes = () => {
 
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="seller-application" element={<SellerApplicationPage />} />
         </Route>
 
         {/* Seller Tools - Require seller role */}

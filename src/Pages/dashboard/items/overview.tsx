@@ -19,13 +19,18 @@ import {
   Wallet,
   Calendar,
   Eye,
-  Loader2
+  Loader2,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/auth/auth';
+import { SellerApplicationService, type SellerApplication } from '../../../services/Auth/seller-applications.service';
 
 const DashboardOverview: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [isSellerStatus, setIsSellerStatus] = useState(false);
+  const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
+  const [applicationLoading, setApplicationLoading] = useState(true);
 
   // Mock data - will be replaced with real API calls later
   const recentOrders = [
@@ -45,12 +50,9 @@ const DashboardOverview: React.FC = () => {
   // Get user roles (from actual user data)
   const getUserRoles = (): string[] => {
     if (!user) return [];
-    
-    // User.roles is already an array from the backend
     if (user.roles && Array.isArray(user.roles)) {
       return user.roles;
     }
-    
     return ['user'];
   };
 
@@ -60,7 +62,7 @@ const DashboardOverview: React.FC = () => {
     return roles.includes('seller') || roles.includes('admin');
   };
 
-  // Get user's display name (from actual user data)
+  // Get user's display name
   const getDisplayName = () => {
     if (user?.fullName) return user.fullName;
     if (user?.email) return user.email.split('@')[0];
@@ -68,13 +70,38 @@ const DashboardOverview: React.FC = () => {
     return 'User';
   };
 
-  // Get member since date (from actual user data)
+  // Get member since date
   const getMemberSince = () => {
     if (user?.createdAt) {
       return new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
     return '2026';
   };
+
+  // Fetch seller application status
+  useEffect(() => {
+    const fetchApplication = async () => {
+      try {
+        setApplicationLoading(true);
+        const apps = await SellerApplicationService.getMyApplications();
+        // Get the most recent application (first one)
+        if (apps && apps.length > 0) {
+          setSellerApplication(apps[0]);
+        } else {
+          setSellerApplication(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch seller application:', err);
+        setSellerApplication(null);
+      } finally {
+        setApplicationLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchApplication();
+    }
+  }, [user]);
 
   useEffect(() => {
     setIsSellerStatus(isSeller());
@@ -169,6 +196,172 @@ const DashboardOverview: React.FC = () => {
   const memberSince = getMemberSince();
   const sellerStatus = isSellerStatus;
 
+  // Determine what to show for seller application
+  const renderSellerSection = () => {
+    // If already a seller, show seller info (maybe skip or show status)
+    if (sellerStatus) {
+      return (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Store className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-display font-semibold text-charcoal">
+                  Seller Account Active
+                </h3>
+                <p className="text-sm text-slate-text">
+                  Your seller account is verified and active
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/dashboard/products"
+              className="bg-green-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
+            >
+              Start Selling→
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // If loading application status
+    if (applicationLoading) {
+      return (
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center justify-center gap-3">
+            <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
+            <span className="text-sm text-slate-text">Checking application status...</span>
+          </div>
+        </div>
+      );
+    }
+
+    // If user has an application
+    if (sellerApplication) {
+      const app = sellerApplication;
+      const status = app.status;
+      
+      if (status === 'pending') {
+        return (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-display font-semibold text-charcoal">
+                    Seller Application Under Review
+                  </h3>
+                  <p className="text-sm text-slate-text">
+                    Your application for <strong>{app.businessName}</strong> is being reviewed
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Submitted on {new Date(app.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/dashboard/seller-application"
+                className="bg-amber-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-amber-700 transition-colors whitespace-nowrap"
+              >
+                View Details →
+              </Link>
+            </div>
+          </div>
+        );
+      } else if (status === 'rejected') {
+        return (
+          <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <XCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-display font-semibold text-charcoal">
+                    Seller Application Not Approved
+                  </h3>
+                  <p className="text-sm text-slate-text">
+                    Your application for <strong>{app.businessName}</strong> was not approved.
+                  </p>
+                  {app.rejectionReason && (
+                    <p className="text-xs text-red-700 mt-1">
+                      Reason: {app.rejectionReason}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Link
+                to="/become-seller"
+                className="bg-red-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-red-700 transition-colors whitespace-nowrap"
+              >
+                Reapply →
+              </Link>
+            </div>
+          </div>
+        );
+      } else if (status === 'approved') {
+        // This case might already be caught by sellerStatus, but just in case
+        return (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-display font-semibold text-charcoal">
+                    Seller Account Ready
+                  </h3>
+                  <p className="text-sm text-slate-text">
+                    Congratulations! Your seller account is active.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/dashboard/seller"
+                className="bg-green-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                Go to Seller Dashboard →
+              </Link>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // Default: no application, not a seller
+    return (
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <Store className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-base font-display font-semibold text-charcoal">
+                Start selling on E-TALA
+              </h3>
+              <p className="text-sm text-slate-text">
+                Reach thousands of customers in Tala and grow your business
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/become-seller"
+            className="bg-purple-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-purple-700 transition-colors whitespace-nowrap"
+          >
+            Become a Seller →
+          </Link>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {/* Welcome Header with Loyalty Points */}
@@ -207,32 +400,8 @@ const DashboardOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Become a Seller CTA (if buyer only) */}
-      {!sellerStatus && (
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <Store className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-base font-display font-semibold text-charcoal">
-                  Start selling on E-TALA
-                </h3>
-                <p className="text-sm text-slate-text">
-                  Reach thousands of customers in Tala and grow your business
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/become-seller"
-              className="bg-purple-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-purple-700 transition-colors whitespace-nowrap"
-            >
-              Become a Seller →
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* Seller Application Status or Become Seller CTA */}
+      {renderSellerSection()}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -456,8 +625,8 @@ const DashboardOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Seller CTA (if buyer) */}
-      {!sellerStatus && (
+      {/* Second Seller CTA (if buyer and no application) - optional but we already have above; to avoid duplication, remove this section if not needed */}
+      {!sellerStatus && !sellerApplication && !applicationLoading && (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>

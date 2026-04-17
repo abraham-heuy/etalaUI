@@ -1,6 +1,4 @@
-// components/common/SessionManager.tsx
 import React, { useState, useEffect } from 'react';
-
 import { useAuth } from '../../contexts/auth/auth';
 import { useSessionTimeout } from '../../hooks/auth/useSessionTimeout';
 import { SessionExpiryModal } from './expiryModal';
@@ -8,7 +6,7 @@ import { SessionExpiryModal } from './expiryModal';
 export const SessionManager: React.FC = () => {
   const { checkAuth, isAuthenticated } = useAuth();
   const [showExpiryWarning, setShowExpiryWarning] = useState(false);
-  const { resetTimer } = useSessionTimeout(120); // 120 seconds for testing
+  const { resetTimer, remainingSeconds } = useSessionTimeout(600, 60); // 10 minutes session, warn at 60 seconds left
 
   useEffect(() => {
     const handleSessionExpiring = (event: CustomEvent) => {
@@ -32,8 +30,7 @@ export const SessionManager: React.FC = () => {
   }, [isAuthenticated]);
 
   const handleExtendSession = async () => {
-    // Refresh token or just reset timer
-    await checkAuth();
+    await checkAuth(); // refresh token or revalidate
     resetTimer();
     setShowExpiryWarning(false);
   };
@@ -43,7 +40,7 @@ export const SessionManager: React.FC = () => {
       isOpen={showExpiryWarning}
       onClose={() => setShowExpiryWarning(false)}
       onExtend={handleExtendSession}
-      secondsLeft={60}
+      secondsLeft={remainingSeconds} // pass actual remaining time
     />
   );
 };

@@ -9,7 +9,7 @@ import {
   CheckCircle,
   AlertCircle,
   Phone,
-  Chrome,
+  Mail,
   User,
   Lock,
   Eye,
@@ -22,31 +22,30 @@ import { AuthService, AuthServiceError } from '../../services/Auth/auth.service'
 
 type SignUpStep = 'role' | 'details' | 'verification' | 'success';
 type UserRole = 'buyer' | null;
-type AuthMethod = 'phone' | 'google';
 
 const RequiredIndicator = () => <span className="text-red-500 ml-1">*</span>;
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
 
-  // ── Step / role 
+  // Step & role
   const [currentStep, setCurrentStep] = useState<SignUpStep>('role');
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('phone');
 
-  // ── Form fields ───────────────────────────────────────────────────────────
+  // Form fields
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
-  // ── OTP ───────────────────────────────────────────────────────────────────
+  // OTP
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpTimer, setOtpTimer] = useState(60);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── UI ────────────────────────────────────────────────────────────────────
+  // UI states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -55,15 +54,12 @@ const SignUp: React.FC = () => {
   // Cleanup timer
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
+  // ─── Helpers ───────────────────────────────────────────────────────────────
   const formatPhoneNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
-    
     if (cleaned.startsWith('254')) return '+' + cleaned;
     if (cleaned.startsWith('0'))   return '+254' + cleaned.slice(1);
     if (cleaned.startsWith('7') || cleaned.startsWith('1')) return '+254' + cleaned;
-    
     return cleaned;
   };
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -93,17 +89,15 @@ const SignUp: React.FC = () => {
     }, 1000);
   };
 
-  // ── Role step ─────────────────────────────────────────────────────────────
-
+  // ─── Role step ─────────────────────────────────────────────────────────────
   const handleRoleContinue = () => {
     if (!userRole) { setError('Please select a role to continue'); return; }
     setError('');
     setCurrentStep('details');
   };
 
-  // ── Phone registration — Step 1 ───────────────────────────────────────────
-
-  const handlePhoneSignUp = async (e: React.FormEvent) => {
+  // ─── Send OTP (email) ──────────────────────────────────────────────────────
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -112,20 +106,25 @@ const SignUp: React.FC = () => {
       return;
     }
 
+    if (!fullName.trim()) { setError('Full name is required'); return; }
+    if (!phoneNumber.trim()) { setError('Phone number is required'); return; }
+    if (!email.trim()) { setError('Email address is required'); return; }
+    if (!password) { setError('Password is required'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+
     setIsLoading(true);
     try {
-      await AuthService.registerPhone({ phone: phoneNumber, fullName, password });
+      await AuthService.requestEmailOtp(email);
       setCurrentStep('verification');
       startOtpTimer();
     } catch (err) {
-      setError(err instanceof AuthServiceError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof AuthServiceError ? err.message : 'Failed to send OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── OTP verification — Step 2 ─────────────────────────────────────────────
-
+  // ─── Verify OTP and create user ───────────────────────────────────────────
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpString = otp.join('');
@@ -134,7 +133,13 @@ const SignUp: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      const { user } = await AuthService.registerPhoneVerify({ phone: phoneNumber, otp: otpString });
+      const { user } = await AuthService.verifyEmailOtp({
+        email,
+        otp: otpString,
+        fullName,
+        phone: phoneNumber,
+        password,
+      });
       setRegisteredName(user.fullName);
       setCurrentStep('success');
     } catch (err) {
@@ -144,50 +149,20 @@ const SignUp: React.FC = () => {
     }
   };
 
-  // ── Resend OTP ────────────────────────────────────────────────────────────
-
+  // ─── Resend OTP ───────────────────────────────────────────────────────────
   const handleResendOtp = async () => {
     setError('');
     setSuccessMessage('');
     setIsLoading(true);
     try {
-      await AuthService.registerPhone({ phone: phoneNumber, fullName, password });
-      setSuccessMessage('New verification code sent.');
+      await AuthService.requestEmailOtp(email);
+      setSuccessMessage('New verification code sent to your email.');
       startOtpTimer();
     } catch (err) {
       setError(err instanceof AuthServiceError ? err.message : 'Could not resend code. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // ── Google registration ───────────────────────────────────────────────────
-
-  const handleGoogleSignUp = () => {
-    if (!agreeToTerms) { setError('You must agree to the terms and conditions'); return; }
-    if (!window.google) { setError('Google Sign-In is not available right now. Please try again later.'); return; }
-
-    setError('');
-
-    window.google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
-      callback: async ({ credential }: { credential: string }) => {
-        setIsLoading(true);
-        setError('');
-        try {
-          // googleAuth handles both new + existing users — server extracts name/email from token
-          const { user } = await AuthService.googleAuth(credential);
-          setRegisteredName(user.fullName);
-          setCurrentStep('success');
-        } catch (err) {
-          setError(err instanceof AuthServiceError ? err.message : 'Google sign-up failed. Please try again.');
-        } finally {
-          setIsLoading(false);
-        }
-      },
-    });
-
-    window.google.accounts.id.prompt();
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -204,7 +179,7 @@ const SignUp: React.FC = () => {
             <h1 className="text-xl font-display font-semibold text-charcoal">
               {currentStep === 'role' && 'Create Account'}
               {currentStep === 'details' && 'Buyer Details'}
-              {currentStep === 'verification' && 'Verify Phone'}
+              {currentStep === 'verification' && 'Verify Email'}
               {currentStep === 'success' && 'Welcome!'}
             </h1>
             <div className="w-10" />
@@ -328,7 +303,7 @@ const SignUp: React.FC = () => {
           </div>
         )}
 
-        {/* ── Details ── */}
+        {/* ── Details (fullName, phone, email, password) ── */}
         {currentStep === 'details' && (
           <div className="space-y-6 animate-slide-up">
             <button
@@ -346,189 +321,140 @@ const SignUp: React.FC = () => {
               <p className="text-sm text-slate-text">Tell us a bit about yourself</p>
             </div>
 
-            {/* Method toggle */}
-            <div className="flex bg-sky-50 rounded-full p-1">
-              {(['phone', 'google'] as AuthMethod[]).map(method => (
-                <button
-                  key={method}
-                  onClick={() => { setAuthMethod(method); setError(''); }}
-                  className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
-                    authMethod === method ? 'bg-white text-sky-700 shadow-sm' : 'text-sky-600 hover:text-sky-700'
-                  }`}
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    {method === 'phone' ? <Phone className="w-4 h-4" /> : <Chrome className="w-4 h-4" />}
-                    {method === 'phone' ? 'Phone' : 'Google'}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* ── Phone form ── */}
-            {authMethod === 'phone' && (
-              <form onSubmit={handlePhoneSignUp} className="space-y-4">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <p className="text-xs text-red-700">{error}</p>
-                  </div>
-                )}
-
-                {/* Full name */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
-                    Full Name <RequiredIndicator />
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={e => setFullName(e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
-                      required
-                    />
-                  </div>
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <p className="text-xs text-red-700">{error}</p>
                 </div>
+              )}
 
-                {/* Phone */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
-                    Phone Number <RequiredIndicator />
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={handlePhoneChange}
-                      placeholder="07XX XXX XXX"
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
-                      required
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-text/60 ml-2">You'll receive a verification code</p>
+              {/* Full name */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
+                  Full Name <RequiredIndicator />
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
+                    required
+                  />
                 </div>
+              </div>
 
-                {/* Password */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
-                    Password <RequiredIndicator />
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-12 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
-                      required
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-text/40 hover:text-sky-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-text/60 ml-2">Minimum 6 characters</p>
+              {/* Phone */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
+                  Phone Number <RequiredIndicator />
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={handlePhoneChange}
+                    placeholder="07XX XXX XXX"
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
+                    required
+                  />
                 </div>
+                <p className="text-[10px] text-slate-text/60 ml-2">Will be used for login</p>
+              </div>
 
-                {/* Terms */}
-                <div className="flex items-center gap-2">
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
+                  Email Address <RequiredIndicator />
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
+                    required
+                  />
+                </div>
+                <p className="text-[10px] text-slate-text/60 ml-2">We'll send verification code here</p>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-text ml-2 flex items-center">
+                  Password <RequiredIndicator />
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-text/40" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-12 py-3 bg-white border border-sky-100 rounded-xl focus:outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-100 transition-all text-charcoal text-sm"
+                    required
+                    minLength={6}
+                  />
                   <button
                     type="button"
-                    onClick={() => setAgreeToTerms(v => !v)}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${agreeToTerms ? 'bg-sky-500 border-sky-500' : 'border-slate-text/30 bg-white'}`}
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-text/40 hover:text-sky-600 transition-colors"
                   >
-                    {agreeToTerms && <CheckCircle className="w-4 h-4 text-white" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                  <span className="text-xs text-slate-text">
-                    I agree to the{' '}
-                    <Link to="/terms" className="text-sky-600 hover:underline">Terms</Link>
-                    {' '}and{' '}
-                    <Link to="/privacy" className="text-sky-600 hover:underline">Privacy Policy</Link>
-                    <RequiredIndicator />
-                  </span>
                 </div>
+                <p className="text-[10px] text-slate-text/60 ml-2">Minimum 6 characters</p>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-sky-500 text-white py-3.5 rounded-xl text-sm font-medium hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Account...</>
-                    : <>Create Account <ArrowRight className="w-4 h-4" /></>}
-                </button>
-              </form>
-            )}
-
-            {/* ── Google form ── */}
-            {authMethod === 'google' && (
-              <div className="space-y-4">
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <p className="text-xs text-red-700">{error}</p>
-                  </div>
-                )}
-
-                {/* Info banner — no name/email fields needed */}
-                <div className="bg-sky-50 rounded-xl p-4 text-sm text-sky-800">
-                  Google will share your name and email with us automatically.
-                  Just tap the button below to get started.
-                </div>
-
-                {/* Terms */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAgreeToTerms(v => !v)}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${agreeToTerms ? 'bg-sky-500 border-sky-500' : 'border-slate-text/30 bg-white'}`}
-                  >
-                    {agreeToTerms && <CheckCircle className="w-4 h-4 text-white" />}
-                  </button>
-                  <span className="text-xs text-slate-text">
-                    I agree to the{' '}
-                    <Link to="/terms" className="text-sky-600 hover:underline">Terms</Link>
-                    {' '}and{' '}
-                    <Link to="/privacy" className="text-sky-600 hover:underline">Privacy Policy</Link>
-                    <RequiredIndicator />
-                  </span>
-                </div>
-
+              {/* Terms */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleGoogleSignUp}
-                  disabled={isLoading}
-                  className="w-full bg-white border border-sky-200 text-charcoal py-3.5 rounded-xl text-sm font-medium hover:bg-sky-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={() => setAgreeToTerms(v => !v)}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${agreeToTerms ? 'bg-sky-500 border-sky-500' : 'border-slate-text/30 bg-white'}`}
                 >
-                  {isLoading
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <><Chrome className="w-5 h-5" /> Sign up with Google</>}
+                  {agreeToTerms && <CheckCircle className="w-4 h-4 text-white" />}
                 </button>
+                <span className="text-xs text-slate-text">
+                  I agree to the{' '}
+                  <Link to="/terms" className="text-sky-600 hover:underline">Terms</Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" className="text-sky-600 hover:underline">Privacy Policy</Link>
+                  <RequiredIndicator />
+                </span>
               </div>
-            )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-sky-500 text-white py-3.5 rounded-xl text-sm font-medium hover:bg-sky-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending Code...</>
+                  : <>Send Verification Code <ArrowRight className="w-4 h-4" /></>}
+              </button>
+            </form>
           </div>
         )}
 
-        {/* ── OTP verification ── */}
+        {/* ── Email OTP verification ── */}
         {currentStep === 'verification' && (
           <div className="space-y-6 animate-slide-up">
             <div className="text-center">
               <div className="w-20 h-20 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone className="w-8 h-8 text-sky-600" />
+                <Mail className="w-8 h-8 text-sky-600" />
               </div>
-              <h2 className="text-2xl font-display font-bold text-charcoal mb-2">Verify Your Number</h2>
+              <h2 className="text-2xl font-display font-bold text-charcoal mb-2">Verify Your Email</h2>
               <p className="text-sm text-slate-text">
                 We've sent a 6-digit code to{' '}
                 <span className="font-medium text-charcoal">
-                  {phoneNumber.slice(0, 4)}***{phoneNumber.slice(-3)}
+                  {email.slice(0, 3)}***{email.slice(email.indexOf('@'))}
                 </span>
               </p>
             </div>
