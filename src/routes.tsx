@@ -1,6 +1,7 @@
-// AppRoutes.tsx (updated version)
+// AppRoutes.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
-
+import { WishlistProvider } from "./contexts/commerce/wishlist.context";
+import { CartProvider } from "./contexts/commerce/cart.context";
 
 // Import all your pages (keeping your existing imports)
 import LandingPage from "./Pages/LandingPage";
@@ -60,9 +61,63 @@ import { ProtectedRoute } from "./contexts/auth/Protected.route";
 import { SessionManager } from "./contexts/auth/sessionManager";
 import TryOnExplainPage from "./Pages/Marketplace/fashion/explain";
 import CartPage from "./Pages/dashboard/items/cart";
-import { WishlistProvider } from "./contexts/commerce/wishlist.context";
 import Reviews from "./Pages/dashboard/items/reviews";
 import SellerApplicationPage from "./Pages/dashboard/sellerTools.tsx/seller-application";
+import SearchResultsPage from "./Pages/Marketplace/product/search";
+import CategoriesPage from "./components/marketplace/Categories";
+import MtushPage from "./Pages/Marketplace/product/mtush";
+import StoresPage from "./Pages/Marketplace/store/storesPage";
+import CheckoutPage from "./Pages/checkout";
+
+// Helper to wrap routes that need cart & wishlist context
+const withMarketplaceProviders = (Component: React.ComponentType) => (
+  <WishlistProvider>
+    <CartProvider category="marketplace">
+      <Component />
+    </CartProvider>
+  </WishlistProvider>
+);
+
+const withFarmersProviders = (Component: React.ComponentType) => (
+  <WishlistProvider>
+    <CartProvider category="farmers">
+      <Component />
+    </CartProvider>
+  </WishlistProvider>
+);
+
+// For other categories if needed (food, stays, boda, services) – add when they use CategoryNavbar
+const withFoodProviders = (Component: React.ComponentType) => (
+  <WishlistProvider>
+    <CartProvider category="food">
+      <Component />
+    </CartProvider>
+  </WishlistProvider>
+);
+
+const withStaysProviders = (Component: React.ComponentType) => (
+  <WishlistProvider>
+    <CartProvider category="stays">
+      <Component />
+    </CartProvider>
+  </WishlistProvider>
+);
+
+const withServicesProviders = (Component: React.ComponentType) => (
+  <WishlistProvider>
+    <CartProvider category="services">
+      <Component />
+    </CartProvider>
+  </WishlistProvider>
+);
+
+const withBodaProviders = (Component: React.ComponentType) => (
+  <WishlistProvider>
+    <CartProvider category="boda">
+      <Component />
+    </CartProvider>
+  </WishlistProvider>
+);
 
 export const AppRoutes = () => {
   return (
@@ -74,58 +129,53 @@ export const AppRoutes = () => {
         <Route path="/about-us" element={<AboutPage />} />
         <Route path="/daily-updates" element={<DailyUpdates />} />
 
-
         {/* Auth Routes */}
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/sign-up" element={<SignUp />} />
 
-        {/* Public marketplace routes - No auth required for browsing */}
-        <Route path="/marketplace">
-          <Route index element={<MarketplaceHome />} />
-          <Route path="category/:slug" element={<CategoryPage />} />
-          <Route path="product/:id" element={<ProductDetailPage />} />
-          <Route path="store/:id" element={<StoreDetailPage />} />
-          <Route path="try-on-explain" element={<TryOnExplainPage />} />
+        {/* Marketplace Routes – wrapped with cart/wishlist providers */}
+        <Route path="/marketplace" element={withMarketplaceProviders(MarketplaceHome)} />
+        <Route path="/marketplace/categories" element={withMarketplaceProviders(CategoriesPage )} />
 
-        </Route>
+        <Route path="/marketplace/category/:slug" element={withMarketplaceProviders(CategoryPage)} />
+        <Route path="/marketplace/product/:id" element={withMarketplaceProviders(ProductDetailPage)} />
+        <Route path="/marketplace/stores" element={withMarketplaceProviders(StoresPage)} />
+        <Route path="/marketplace/store/:id" element={withMarketplaceProviders(StoreDetailPage)} />
+        <Route path="/marketplace/try-on-explain" element={withMarketplaceProviders(TryOnExplainPage)} />
+        <Route path="/marketplace/search" element={withMarketplaceProviders(SearchResultsPage)} />
+        <Route path="/marketplace/mtush" element={withMarketplaceProviders(MtushPage)} />
+        <Route path="/checkout" element={withMarketplaceProviders(CheckoutPage)} />
 
-        <Route path="/farmers">
-          <Route index element={<FarmersHome />} />
-          <Route path="category/:slug" element={<FarmersCategoryPage />} />
-          <Route path="farmer/:id" element={<FarmerDetailPage />} />
-          <Route path="product/:id" element={<FarmerProductDetailPage />} />
 
-        </Route>
 
-        <Route path="/farmers/livestock">
-          <Route index element={<LivestockPage />} />
-          <Route path=":id" element={<LivestockPage />} />
-          <Route path="inquire/:id" element={<LivestockInquirePage />} />
-        </Route>
+        {/* Farmers Routes */}
+        <Route path="/farmers" element={withFarmersProviders(FarmersHome)} />
+        <Route path="/farmers/category/:slug" element={withFarmersProviders(FarmersCategoryPage)} />
+        <Route path="/farmers/farmer/:id" element={withFarmersProviders(FarmerDetailPage)} />
+        <Route path="/farmers/product/:id" element={withFarmersProviders(FarmerProductDetailPage)} />
+        <Route path="/farmers/livestock" element={withFarmersProviders(LivestockPage)} />
+        <Route path="/farmers/livestock/:id" element={withFarmersProviders(LivestockPage)} />
+        <Route path="/farmers/livestock/inquire/:id" element={withFarmersProviders(LivestockInquirePage)} />
 
-        <Route path="/boda">
-          <Route index element={<BodaHome />} />
-          <Route path="pricing" element={<PricingPage />} />
-        </Route>
+        {/* Boda Routes */}
+        <Route path="/boda" element={withBodaProviders(BodaHome)} />
+        <Route path="/boda/pricing" element={withBodaProviders(PricingPage)} />
 
-        <Route path="/services">
-          <Route index element={<ServicesHome />} />
-          <Route path="category/:slug" element={<ServiceCategoryPage />} />
-          <Route path="provider/:id" element={<ServiceProviderPage />} />
-        </Route>
+        {/* Services Routes */}
+        <Route path="/services" element={withServicesProviders(ServicesHome)} />
+        <Route path="/services/category/:slug" element={withServicesProviders(ServiceCategoryPage)} />
+        <Route path="/services/provider/:id" element={withServicesProviders(ServiceProviderPage)} />
 
-        <Route path="/food">
-          <Route index element={<FoodHome />} />
-          <Route path="cuisine/:slug" element={<FoodCategoryPage />} />
-          <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
-        </Route>
+        {/* Food Routes */}
+        <Route path="/food" element={withFoodProviders(FoodHome)} />
+        <Route path="/food/cuisine/:slug" element={withFoodProviders(FoodCategoryPage)} />
+        <Route path="/food/restaurant/:id" element={withFoodProviders(RestaurantDetailPage)} />
 
-        <Route path="/stays">
-          <Route index element={<StaysHome />} />
-          <Route path="category/:slug" element={<StayCategoryPage />} />
-          <Route path="property/:id" element={<PropertyDetailPage />} />
-        </Route>
+        {/* Stays Routes */}
+        <Route path="/stays" element={withStaysProviders(StaysHome)} />
+        <Route path="/stays/category/:slug" element={withStaysProviders(StayCategoryPage)} />
+        <Route path="/stays/property/:id" element={withStaysProviders(PropertyDetailPage)} />
 
         {/* Public info pages */}
         <Route path="/become-seller" element={<BecomeSellerPage />} />
@@ -148,7 +198,7 @@ export const AppRoutes = () => {
           <Route path="orders/:id" element={<OrderDetailPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route
-            path="/dashboard/wishlist"
+            path="wishlist"
             element={
               <WishlistProvider>
                 <WishlistPage />
@@ -157,7 +207,6 @@ export const AppRoutes = () => {
           />
           <Route path="addresses" element={<AddressesPage />} />
           <Route path="reviews" element={<Reviews />} />
-
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="seller-application" element={<SellerApplicationPage />} />
@@ -180,7 +229,6 @@ export const AppRoutes = () => {
           <Route path="earnings" element={<EarningsPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
-
         </Route>
 
         {/* Admin Routes - Require admin role */}

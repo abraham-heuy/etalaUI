@@ -114,26 +114,40 @@ export const MarketplaceService = {
     });
   },
 
-  async getDeals(page = 1, limit = 20): Promise<{ products: MarketplaceProduct[]; total: number }> {
-    return safeCall(async () => {
-      const { data } = await api.get('/marketplace/deals', { params: { page, limit } });
-      return data.data;
-    });
-  },
+// Add to  object
+async getDeals(page = 1, limit = 20): Promise<MarketplaceProduct[]> {
+  return safeCall(async () => {
+    const { data } = await api.get('/marketplace/deals', { params: { page, limit } });
+    // Assuming response: { success: true, data: [...] }
+    return data.data || [];
+  });
+},
 
-  async getTrending(page = 1, limit = 20): Promise<{ products: MarketplaceProduct[]; total: number }> {
-    return safeCall(async () => {
-      const { data } = await api.get('/marketplace/trending', { params: { page, limit } });
-      return data.data;
-    });
-  },
+async getTrending(page = 1, limit = 20): Promise<MarketplaceProduct[]> {
+  return safeCall(async () => {
+    const { data } = await api.get('/marketplace/trending', { params: { page, limit } });
+    return data.data || [];
+  });
+},
 
-  async search(query: string, page = 1, limit = 20): Promise<{ products: MarketplaceProduct[]; total: number }> {
-    return safeCall(async () => {
-      const { data } = await api.get('/marketplace/search', { params: { q: query, page, limit } });
-      return data.data;
-    });
-  },
+async search(
+  query: string,
+  page = 1,
+  limit = 20,
+  category?: string,
+  options?: { isMtush?: boolean; condition?: string; minPrice?: number; maxPrice?: number }
+): Promise<{ products: MarketplaceProduct[]; total: number }> {
+  return safeCall(async () => {
+    const params: any = { q: query, page, limit };
+    if (category) params.category = category;
+    if (options?.isMtush !== undefined) params.isMtush = options.isMtush;
+    if (options?.condition) params.condition = options.condition;
+    if (options?.minPrice) params.minPrice = options.minPrice;
+    if (options?.maxPrice) params.maxPrice = options.maxPrice;
+    const { data } = await api.get('/marketplace/search', { params });
+    return { products: data.data || [], total: data.meta?.total || 0 };
+  });
+},
 
   async getSellerProfile(sellerId: string): Promise<{ seller: any; products: MarketplaceProduct[] }> {
     return safeCall(async () => {

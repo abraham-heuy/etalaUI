@@ -69,6 +69,11 @@ const OrdersPage: React.FC = () => {
     });
   };
 
+  // Helper to get first letter safely
+  const getItemInitial = (name?: string) => {
+    return name?.charAt(0)?.toUpperCase() || '?';
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -185,8 +190,11 @@ const OrdersPage: React.FC = () => {
               <div className="flex items-center justify-between sm:justify-end gap-4">
                 <div className="flex -space-x-2">
                   {order.items.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="w-6 h-6 bg-sky-200 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold">
-                      {item.name.charAt(0)}
+                    <div
+                      key={idx}
+                      className="w-6 h-6 bg-sky-200 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold"
+                    >
+                      {getItemInitial(item.name)}
                     </div>
                   ))}
                   {order.items.length > 3 && (

@@ -1,4 +1,4 @@
-// components/marketplace/StoreCard.tsx
+// components/marketplace/StoneCard.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, BadgeCheck, Package } from 'lucide-react';
@@ -7,42 +7,55 @@ interface StoreCardProps {
   store: {
     id: string;
     name: string;
-    image: string;
+    image?: string;
     rating: number;
     products: number;
     verified: boolean;
   };
 }
 
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 const StoreCard: React.FC<StoreCardProps> = ({ store }) => {
   return (
     <Link
       to={`/marketplace/store/${store.id}`}
-      className="bg-white rounded-xl border border-sky-100 overflow-hidden hover:shadow-md transition-all group"
+      className="bg-white rounded-xl border border-sky-100 overflow-hidden hover:shadow-md transition-all group block"
     >
       <div className="flex items-center gap-4 p-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-sky-200">
-          <img 
-            src={store.image} 
-            alt={store.name}
-            className="w-full h-full object-cover"
-          />
+        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-sky-200 bg-sky-100 flex items-center justify-center flex-shrink-0">
+          {store.image ? (
+            <img 
+              src={store.image} 
+              alt={store.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-xl font-bold text-sky-600">{getInitials(store.name)}</span>
+          )}
         </div>
         
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 mb-1">
-            <h3 className="text-base font-display font-semibold text-charcoal group-hover:text-sky-600 transition-colors">
+            <h3 className="text-base font-display font-semibold text-charcoal group-hover:text-sky-600 transition-colors truncate">
               {store.name}
             </h3>
             {store.verified && (
-              <BadgeCheck className="w-4 h-4 text-sky-600" />
+              <BadgeCheck className="w-4 h-4 text-sky-600 flex-shrink-0" />
             )}
           </div>
           
-          <div className="flex items-center gap-3 text-xs text-slate-text/70">
+          <div className="flex items-center gap-2 text-xs text-slate-text/70 mb-1">
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-current" />
-              <span>{store.rating}</span>
+              <span>{store.rating.toFixed(1)}</span>
             </div>
             <span className="w-1 h-1 bg-slate-text/30 rounded-full"></span>
             <div className="flex items-center gap-1">

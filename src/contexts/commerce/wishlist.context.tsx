@@ -1,6 +1,7 @@
 // contexts/WishlistContext.tsx
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { type Wishlist, CommerceService } from '../../services/commerce/commerce.service';
+import { ProductService } from '../../services/products/product.service'; // Import ProductService
 
 interface WishlistContextType {
   wishlist: Wishlist | null;
@@ -47,7 +48,24 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const addToWishlist = async (productId: string, productType: string) => {
     try {
-      const updated = await CommerceService.addToWishlist(productId, productType);
+      // Fetch product details to get name, sellerName, category, sellerId, price
+      let productDetails: any;
+      if (productType === 'marketplace') {
+        productDetails = await ProductService.marketplace.getById(productId);
+      } else {
+        // Handle other product types if needed
+        throw new Error(`Unsupported product type: ${productType}`);
+      }
+      
+      const updated = await CommerceService.addToWishlist(
+        productId,
+        productType,
+        productDetails.name,
+        productDetails.sellerName || 'Unknown Seller',
+        productDetails.category,
+        productDetails.sellerId,
+        productDetails.price
+      );
       setWishlist(updated);
     } catch (err: any) {
       setError(err.message);
@@ -78,10 +96,8 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const moveToCart = async (itemId: string) => {
     try {
-      const {  wishlist: newWishlist } = await CommerceService.moveToCart(itemId);
+      const { wishlist: newWishlist } = await CommerceService.moveToCart(itemId);
       setWishlist(newWishlist);
-      // Notify cart context? We'll rely on the cart provider to refresh.
-      // Optionally, we can emit an event or refresh the cart via a global store.
       window.dispatchEvent(new CustomEvent('cart-updated'));
     } catch (err: any) {
       setError(err.message);

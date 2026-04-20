@@ -41,13 +41,26 @@ export interface BaseProduct {
   updatedAt: string;
 }
 
-// Marketplace product (generic goods)
+
 export interface MarketplaceProduct extends BaseProduct {
   category: string;
   brand?: string;
   condition: 'new' | 'used' | 'refurbished';
+  
+  // Additional fields returned by the API (used in product detail page)
+  rating?: number;
+  reviewCount?: number;
+  sellerName?: string;
+  sellerRating?: number;
+  totalSales?: number;
+  sellerLocation?: string;
+  stockQuantity?: number;        // alias for stock
+  originalPrice?: number;        // original price before discount
+  tags?: string[];
+  isMtush?: boolean;             // pre-owned flag
+  subcategory?: string;
+  modelNumber?: string;
 }
-
 // Farmers product (fresh produce, crops, etc.)
 export interface FarmersProduct extends BaseProduct {
   unit: 'kg' | 'bunch' | 'piece' | 'bundle';

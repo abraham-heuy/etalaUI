@@ -17,6 +17,7 @@ api.interceptors.request.use(config => {
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface CartItem {
+  id?: string; 
   productId: string;
   productType: string; // e.g., 'marketplace', 'farmers', 'food', etc.
   name: string;
@@ -230,9 +231,25 @@ export const CommerceService = {
     });
   },
 
-  async addToWishlist(productId: string, productType: string): Promise<Wishlist> {
+  async addToWishlist(
+    productId: string,
+    productType: string,
+    productName: string,
+    sellerName: string,
+    productCategory: string,
+    sellerId: string,
+    price: number
+  ): Promise<Wishlist> {
     return safeCall(async () => {
-      const { data } = await api.post<{ success: true; data: Wishlist }>('/commerce/wishlist/items', { productId, productType });
+      const { data } = await api.post<{ success: true; data: Wishlist }>('/commerce/wishlist/items', {
+        productId,
+        productType,
+        productName,
+        sellerName,
+        productCategory,
+        sellerId,
+        price,
+      });
       return data.data;
     });
   },
@@ -273,7 +290,14 @@ export const CommerceService = {
   },
 
   // ==================== Orders ====================
-  async placeOrder(orderData: { items: OrderItem[]; shippingAddress: Order['shippingAddress'] }): Promise<Order> {
+  async placeOrder(orderData: {
+    category: string;
+    userName: string;
+    userEmail?: string;
+    deliveryAddress: string;
+    paymentMethod: string;
+    notes?: string;
+  }): Promise<Order> {
     return safeCall(async () => {
       const { data } = await api.post<{ success: true; data: Order }>('/commerce/orders', orderData);
       return data.data;

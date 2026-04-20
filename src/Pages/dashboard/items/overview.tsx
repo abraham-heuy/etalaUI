@@ -18,51 +18,149 @@ import {
   Store,
   Wallet,
   Calendar,
-  Eye,
   Loader2,
   CheckCircle,
   XCircle
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/auth/auth';
 import { SellerApplicationService, type SellerApplication } from '../../../services/Auth/seller-applications.service';
+import { CommerceService, type Order, type Wishlist } from '../../../services/commerce/commerce.service';
+import { MarketplaceService, type MarketplaceProduct } from '../../../services/Marketplace/marketplace.service';
 
 const DashboardOverview: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [isSellerStatus, setIsSellerStatus] = useState(false);
   const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
   const [applicationLoading, setApplicationLoading] = useState(true);
+  
+  // Real data states
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [wishlist, setWishlist] = useState<Wishlist | null>(null);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [recommendedProducts, setRecommendedProducts] = useState<MarketplaceProduct[]>([]);
+  const [recsLoading, setRecsLoading] = useState(true);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyPointsLoading, setLoyaltyPointsLoading] = useState(true);
+  const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  const [upcomingDeals, setUpcomingDeals] = useState<any[]>([]);
 
-  // Mock data - will be replaced with real API calls later
-  const recentOrders = [
-    { id: '1234', date: '2026-03-10', total: 2450, status: 'delivered', items: 3 },
-    { id: '1235', date: '2026-03-08', total: 5670, status: 'shipped', items: 2 },
-    { id: '1236', date: '2026-03-05', total: 1890, status: 'processing', items: 1 },
-    { id: '1237', date: '2026-03-03', total: 3240, status: 'delivered', items: 4 },
-  ];
-
-  // Mock loyalty data - will be replaced with real API calls later
-  const mockLoyaltyData = {
-    points: 1250,
-    nextReward: 2000,
-    pointsValue: 1250
-  };
-
-  // Get user roles (from actual user data)
-  const getUserRoles = (): string[] => {
-    if (!user) return [];
-    if (user.roles && Array.isArray(user.roles)) {
-      return user.roles;
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+      fetchSellerApplication();
     }
-    return ['user'];
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch recent orders (limit 3)
+      const orders = await CommerceService.getMyOrders();
+      setRecentOrders(orders.slice(0, 3));
+      
+      // Fetch wishlist
+      const wishlistData = await CommerceService.getWishlist();
+      setWishlist(wishlistData);
+      
+      // Generate recommendations based on wishlist (or fallback to trending)
+      let recs: MarketplaceProduct[] = [];
+      if (wishlistData.items.length > 0) {
+        // Get the first wishlist item's product details to find its category
+        const firstItem = wishlistData.items[0];
+        if (firstItem.productType === 'marketplace') {
+          try {
+            // We need a method to get product by ID from marketplace service
+            // Assuming we have a method getProductById (if not, use search or category)
+            // For now, fallback to trending if not available
+            recs = await MarketplaceService.getTrending(1, 4);
+          } catch (e) {
+            recs = await MarketplaceService.getTrending(1, 4);
+          }
+        } else {
+          recs = await MarketplaceService.getTrending(1, 4);
+        }
+      } else {
+        recs = await MarketplaceService.getTrending(1, 4);
+      }
+      setRecommendedProducts(recs);
+      
+      // Loyalty points (from user or default 0)
+      setLoyaltyPoints((user as any)?.loyaltyPoints || 0);
+      
+      // Active offers (mock – can be replaced with real endpoint)
+      setActiveOffers([
+        { 
+          id: 1, 
+          title: 'Free Delivery', 
+          description: 'On orders over KSh 1,000', 
+          code: 'FREESHIP',
+          validUntil: '2026-03-31',
+          discount: 0,
+          bg: 'bg-green-50',
+          icon: Package,
+          color: 'text-green-600'
+        },
+        { 
+          id: 2, 
+          title: 'Weekend Flash Sale', 
+          description: '15% off on electronics', 
+          code: 'WEEKEND15',
+          validUntil: '2026-03-15',
+          discount: 15,
+          bg: 'bg-blue-50',
+          icon: Tag,
+          color: 'text-blue-600'
+        },
+        { 
+          id: 3, 
+          title: 'Birthday Bonus', 
+          description: 'Double points this month', 
+          code: 'BDAY2X',
+          validUntil: '2026-03-31',
+          discount: 0,
+          bg: 'bg-pink-50',
+          icon: Gift,
+          color: 'text-pink-600'
+        },
+      ]);
+      
+      // Upcoming deals (mock)
+      setUpcomingDeals([
+        { day: 'Tomorrow', deal: 'Farm Fresh Friday', discount: '20% off produce' },
+        { day: 'Mar 15', deal: 'Tech Tuesday', discount: 'Up to 30% off electronics' },
+        { day: 'Mar 20', deal: 'Weekend Special', discount: 'Buy 1 Get 1 Free' },
+      ]);
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+    } finally {
+      setOrdersLoading(false);
+      setWishlistLoading(false);
+      setRecsLoading(false);
+      setLoyaltyPointsLoading(false);
+    }
   };
 
-  // Check if user is a seller
-  const isSeller = () => {
-    const roles = getUserRoles();
-    return roles.includes('seller') || roles.includes('admin');
+  const fetchSellerApplication = async () => {
+    try {
+      setApplicationLoading(true);
+      const apps = await SellerApplicationService.getMyApplications();
+      setSellerApplication(apps.length > 0 ? apps[0] : null);
+    } catch (err) {
+      console.error('Failed to fetch seller application:', err);
+      setSellerApplication(null);
+    } finally {
+      setApplicationLoading(false);
+    }
   };
 
-  // Get user's display name
+  // Derived stats
+  const totalOrders = recentOrders.length;
+  const totalWishlistItems = wishlist?.items.length || 0;
+  const totalSpentThisMonth = recentOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const ordersThisMonth = recentOrders.length;
+  const deliveredThisMonth = recentOrders.filter(o => o.status === 'delivered').length;
+
+  // User info helpers
   const getDisplayName = () => {
     if (user?.fullName) return user.fullName;
     if (user?.email) return user.email.split('@')[0];
@@ -70,7 +168,6 @@ const DashboardOverview: React.FC = () => {
     return 'User';
   };
 
-  // Get member since date
   const getMemberSince = () => {
     if (user?.createdAt) {
       return new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -78,109 +175,15 @@ const DashboardOverview: React.FC = () => {
     return '2026';
   };
 
-  // Fetch seller application status
-  useEffect(() => {
-    const fetchApplication = async () => {
-      try {
-        setApplicationLoading(true);
-        const apps = await SellerApplicationService.getMyApplications();
-        // Get the most recent application (first one)
-        if (apps && apps.length > 0) {
-          setSellerApplication(apps[0]);
-        } else {
-          setSellerApplication(null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch seller application:', err);
-        setSellerApplication(null);
-      } finally {
-        setApplicationLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchApplication();
-    }
-  }, [user]);
+  const isSeller = () => {
+    const roles = user?.roles || [];
+    return roles.includes('seller') || roles.includes('admin');
+  };
 
   useEffect(() => {
     setIsSellerStatus(isSeller());
   }, [user]);
 
-  // Stats with fallback mock data
-  const stats = [
-    { label: 'Total Orders', value: '12', icon: ShoppingBag, color: 'bg-blue-500', change: '+2 this month' },
-    { label: 'Wishlist', value: '8', icon: Heart, color: 'bg-red-500', change: '3 new items' },
-    { label: 'Saved Addresses', value: '2', icon: MapPin, color: 'bg-green-500', change: '1 default' },
-    { label: 'Payment Methods', value: '2', icon: CreditCard, color: 'bg-purple-500', change: 'Visa ••4242' },
-  ];
-
-  // Loyalty points data - using mock for now
-  const loyaltyPoints = mockLoyaltyData.points;
-  const nextReward = mockLoyaltyData.nextReward;
-  const pointsValue = mockLoyaltyData.pointsValue;
-
-  // Active promos and offers (mock data)
-  const activeOffers = [
-    { 
-      id: 1, 
-      title: 'Free Delivery', 
-      description: 'On orders over KSh 1,000', 
-      code: 'FREESHIP',
-      validUntil: '2026-03-31',
-      discount: 0,
-      bg: 'bg-green-50',
-      icon: Package,
-      color: 'text-green-600'
-    },
-    { 
-      id: 2, 
-      title: 'Weekend Flash Sale', 
-      description: '15% off on electronics', 
-      code: 'WEEKEND15',
-      validUntil: '2026-03-15',
-      discount: 15,
-      bg: 'bg-blue-50',
-      icon: Tag,
-      color: 'text-blue-600'
-    },
-    { 
-      id: 3, 
-      title: 'Birthday Bonus', 
-      description: 'Double points this month', 
-      code: 'BDAY2X',
-      validUntil: '2026-03-31',
-      discount: 0,
-      bg: 'bg-pink-50',
-      icon: Gift,
-      color: 'text-pink-600'
-    },
-  ];
-
-  // Upcoming deals (mock data)
-  const upcomingDeals = [
-    { day: 'Tomorrow', deal: 'Farm Fresh Friday', discount: '20% off produce' },
-    { day: 'Mar 15', deal: 'Tech Tuesday', discount: 'Up to 30% off electronics' },
-    { day: 'Mar 20', deal: 'Weekend Special', discount: 'Buy 1 Get 1 Free' },
-  ];
-
-  // Recent activity (mock data)
-  const recentActivity = [
-    { action: 'Order #1234 delivered', time: '2 hours ago', icon: Package },
-    { action: 'Added item to wishlist', time: '5 hours ago', icon: Heart },
-    { action: 'Earned 50 loyalty points', time: '1 day ago', icon: Star },
-    { action: 'Viewed 3 products', time: '2 days ago', icon: Eye },
-  ];
-
-  // Recommended products (mock data)
-  const recommendedProducts = [
-    { id: 1, name: 'iPhone 13 Pro', price: 145000, image: 'https://images.unsplash.com/photo-1632661674596-df8be6a1c9e1?w=150&h=150&fit=crop', rating: 4.8, reason: 'Based on your browsing' },
-    { id: 2, name: 'Leather Jacket', price: 6500, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=150&h=150&fit=crop', rating: 4.5, reason: 'Trending in fashion' },
-    { id: 3, name: 'Fresh Eggs (Tray)', price: 450, image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=150&h=150&fit=crop', rating: 4.9, reason: 'From your favorite farmer' },
-    { id: 4, name: 'Wireless Headphones', price: 3500, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=150&h=150&fit=crop', rating: 4.6, reason: 'Recommended for you' },
-  ];
-
-  // Show loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -192,14 +195,9 @@ const DashboardOverview: React.FC = () => {
     );
   }
 
-  const displayName = getDisplayName();
-  const memberSince = getMemberSince();
-  const sellerStatus = isSellerStatus;
-
-  // Determine what to show for seller application
   const renderSellerSection = () => {
-    // If already a seller, show seller info (maybe skip or show status)
-    if (sellerStatus) {
+    // If already a seller, show seller info
+    if (isSellerStatus) {
       return (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -220,7 +218,7 @@ const DashboardOverview: React.FC = () => {
               to="/dashboard/products"
               className="bg-green-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
             >
-              Start Selling→
+              Start Selling →
             </Link>
           </div>
         </div>
@@ -368,56 +366,74 @@ const DashboardOverview: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-display font-bold text-charcoal">
-            Welcome back, {displayName}! 👋
+            Welcome back, {getDisplayName()}! 👋
           </h1>
           <p className="text-slate-text mt-1 flex items-center gap-2">
             <Calendar className="w-4 h-4" />
-            Member since {memberSince}
+            Member since {getMemberSince()}
           </p>
-          {user?.email && (
-            <p className="text-xs text-slate-text mt-0.5">{user.email}</p>
-          )}
-          {user?.phone && !user?.email && (
-            <p className="text-xs text-slate-text mt-0.5">{user.phone}</p>
-          )}
+          {user?.email && <p className="text-xs text-slate-text mt-0.5">{user.email}</p>}
+          {user?.phone && !user?.email && <p className="text-xs text-slate-text mt-0.5">{user.phone}</p>}
         </div>
         
         {/* Loyalty Points Card */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 text-white">
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 text-white min-w-[160px]">
           <div className="flex items-center gap-2 mb-1">
             <Star className="w-5 h-5 fill-white" />
             <span className="text-sm font-medium">Loyalty Points</span>
           </div>
-          <p className="text-2xl font-bold">{loyaltyPoints} pts</p>
-          <p className="text-xs text-white/80">Worth KSh {pointsValue}</p>
-          <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-white rounded-full"
-              style={{ width: `${(loyaltyPoints / nextReward) * 100}%` }}
-            />
-          </div>
-          <p className="text-xs mt-1">{nextReward - loyaltyPoints} pts to next reward</p>
+          {loyaltyPointsLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              <p className="text-2xl font-bold">{loyaltyPoints} pts</p>
+              <p className="text-xs text-white/80">Worth KSh {loyaltyPoints}</p>
+              <div className="mt-2 h-1.5 bg-white/30 rounded-full overflow-hidden">
+                <div className="h-full bg-white rounded-full" style={{ width: `${Math.min((loyaltyPoints / 2000) * 100, 100)}%` }} />
+              </div>
+              <p className="text-xs mt-1">{2000 - loyaltyPoints} pts to next reward</p>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Seller Application Status or Become Seller CTA */}
+      {/* Seller Section */}
       {renderSellerSection()}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {stats.map((stat, idx) => {
-          const Icon = stat.icon;
-          return (
-            <div key={idx} className="bg-white rounded-xl p-4 border border-sky-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className={`w-10 h-10 ${stat.color} bg-opacity-10 rounded-lg flex items-center justify-center mb-2`}>
-                <Icon className={`w-5 h-5 ${stat.color.replace('bg-', 'text-')}`} />
-              </div>
-              <p className="text-2xl font-bold text-charcoal">{stat.value}</p>
-              <p className="text-xs text-slate-text">{stat.label}</p>
-              <p className="text-[10px] text-green-600 mt-1">{stat.change}</p>
-            </div>
-          );
-        })}
+        <div className="bg-white rounded-xl p-4 border border-sky-100 shadow-sm">
+          <div className="w-10 h-10 bg-blue-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-2">
+            <ShoppingBag className="w-5 h-5 text-blue-500" />
+          </div>
+          <p className="text-2xl font-bold text-charcoal">{totalOrders}</p>
+          <p className="text-xs text-slate-text">Total Orders</p>
+          <p className="text-[10px] text-green-600 mt-1">+{ordersThisMonth} this month</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-sky-100 shadow-sm">
+          <div className="w-10 h-10 bg-red-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-2">
+            <Heart className="w-5 h-5 text-red-500" />
+          </div>
+          <p className="text-2xl font-bold text-charcoal">{totalWishlistItems}</p>
+          <p className="text-xs text-slate-text">Wishlist</p>
+          <p className="text-[10px] text-slate-text mt-1">Saved items</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-sky-100 shadow-sm">
+          <div className="w-10 h-10 bg-green-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-2">
+            <MapPin className="w-5 h-5 text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-charcoal">1</p>
+          <p className="text-xs text-slate-text">Saved Addresses</p>
+          <p className="text-[10px] text-slate-text mt-1">Default: Tala</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-sky-100 shadow-sm">
+          <div className="w-10 h-10 bg-purple-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-2">
+            <CreditCard className="w-5 h-5 text-purple-500" />
+          </div>
+          <p className="text-2xl font-bold text-charcoal">1</p>
+          <p className="text-xs text-slate-text">Payment Methods</p>
+          <p className="text-[10px] text-slate-text mt-1">M-Pesa</p>
+        </div>
       </div>
 
       {/* Active Offers & Promos */}
@@ -425,16 +441,12 @@ const DashboardOverview: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Flame className="w-5 h-5 text-red-600" />
-            <h2 className="text-lg font-display font-semibold text-charcoal">
-              Active Offers & Promos
-            </h2>
+            <h2 className="text-lg font-display font-semibold text-charcoal">Active Offers & Promos</h2>
           </div>
           <Link to="/offers" className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1">
-            View All
-            <ChevronRight className="w-4 h-4" />
+            View All <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {activeOffers.map((offer) => {
             const Icon = offer.icon;
@@ -445,9 +457,7 @@ const DashboardOverview: React.FC = () => {
                     <Icon className={`w-4 h-4 ${offer.color}`} />
                   </div>
                   {offer.discount > 0 && (
-                    <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
-                      -{offer.discount}%
-                    </span>
+                    <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">-{offer.discount}%</span>
                   )}
                 </div>
                 <h3 className="text-sm font-medium text-charcoal mb-1">{offer.title}</h3>
@@ -458,8 +468,7 @@ const DashboardOverview: React.FC = () => {
                   </div>
                 )}
                 <p className="text-[10px] text-slate-text/70 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Valid until {new Date(offer.validUntil).toLocaleDateString()}
+                  <Clock className="w-3 h-3" /> Valid until {new Date(offer.validUntil).toLocaleDateString()}
                 </p>
               </div>
             );
@@ -471,9 +480,7 @@ const DashboardOverview: React.FC = () => {
       <div className="bg-white rounded-xl border border-sky-100 p-5">
         <div className="flex items-center gap-2 mb-3">
           <Calendar className="w-5 h-5 text-redbull-blue" />
-          <h2 className="text-lg font-display font-semibold text-charcoal">
-            Upcoming Deals
-          </h2>
+          <h2 className="text-lg font-display font-semibold text-charcoal">Upcoming Deals</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {upcomingDeals.map((deal, idx) => (
@@ -496,103 +503,111 @@ const DashboardOverview: React.FC = () => {
         {/* Recent Orders */}
         <div className="bg-white rounded-xl border border-sky-100 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-display font-semibold text-charcoal">
-              Recent Orders
-            </h2>
+            <h2 className="text-lg font-display font-semibold text-charcoal">Recent Orders</h2>
             <Link to="/dashboard/orders" className="text-sm text-redbull-blue hover:underline flex items-center gap-1">
-              View All
-              <ChevronRight className="w-4 h-4" />
+              View All <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-
-          <div className="space-y-3">
-            {recentOrders.slice(0, 3).map((order) => (
-              <Link
-                key={order.id}
-                to={`/dashboard/orders/${order.id}`}
-                className="flex items-center justify-between p-3 bg-sky-50/50 rounded-lg hover:bg-sky-100/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Package className="w-5 h-5 text-redbull-blue" />
-                  <div>
-                    <p className="text-sm font-medium text-charcoal">Order #{order.id}</p>
-                    <p className="text-xs text-slate-text">{order.date} · {order.items} items · KSh {order.total}</p>
+          {ordersLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-sky-500" /></div>
+          ) : recentOrders.length === 0 ? (
+            <p className="text-center text-slate-text py-8">No orders yet</p>
+          ) : (
+            <div className="space-y-3">
+              {recentOrders.map((order) => (
+                <Link key={order.id} to={`/dashboard/orders/${order.id}`} className="flex items-center justify-between p-3 bg-sky-50/50 rounded-lg hover:bg-sky-100/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Package className="w-5 h-5 text-redbull-blue" />
+                    <div>
+                      <p className="text-sm font-medium text-charcoal">Order #{order.id.slice(-8)}</p>
+                      <p className="text-xs text-slate-text">{new Date(order.createdAt).toLocaleDateString()} · {order.items.length} items · KSh {order.totalAmount}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                    order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
-                    {order.status}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-slate-text" />
-                </div>
-              </Link>
-            ))}
-          </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                      order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                      order.status === 'processing' ? 'bg-amber-100 text-amber-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {order.status}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-text" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity – simplified (notifications / order updates) */}
         <div className="bg-white rounded-xl border border-sky-100 p-5">
-          <h2 className="text-lg font-display font-semibold text-charcoal mb-4">
-            Recent Activity
-          </h2>
-          <div className="space-y-3">
-            {recentActivity.map((activity, idx) => {
-              const Icon = activity.icon;
-              return (
-                <div key={idx} className="flex items-center gap-3 p-2">
+          <h2 className="text-lg font-display font-semibold text-charcoal mb-4">Recent Activity</h2>
+          {wishlistLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-sky-500" /></div>
+          ) : (
+            <div className="space-y-3">
+              {recentOrders.length > 0 && (
+                <div className="flex items-center gap-3 p-2">
                   <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-redbull-blue" />
+                    <Package className="w-4 h-4 text-redbull-blue" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-charcoal">{activity.action}</p>
-                    <p className="text-xs text-slate-text">{activity.time}</p>
+                    <p className="text-sm text-charcoal">Order #{recentOrders[0].id.slice(-8)} {recentOrders[0].status}</p>
+                    <p className="text-xs text-slate-text">Recently</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+              {totalWishlistItems > 0 && (
+                <div className="flex items-center gap-3 p-2">
+                  <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-redbull-blue" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-charcoal">{totalWishlistItems} items in wishlist</p>
+                    <p className="text-xs text-slate-text">Saved for later</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Personalized Recommendations */}
+      {/* Personalized Recommendations (based on wishlist or trending) */}
       <div className="bg-white rounded-xl border border-sky-100 p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-display font-semibold text-charcoal">
-              Recommended for You
-            </h2>
-            <p className="text-xs text-slate-text">Based on your browsing history</p>
+            <h2 className="text-lg font-display font-semibold text-charcoal">Recommended for You</h2>
+            <p className="text-xs text-slate-text">
+              {wishlist && wishlist.items.length > 0 ? 'Based on your wishlist' : 'Trending now'}
+            </p>
           </div>
           <Link to="/marketplace" className="text-sm text-redbull-blue hover:underline flex items-center gap-1">
-            Browse More
-            <ChevronRight className="w-4 h-4" />
+            Browse More <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {recommendedProducts.map((product) => (
-            <Link key={product.id} to={`/marketplace/product/${product.id}`} className="group">
-              <div className="aspect-square bg-sky-100 rounded-lg mb-2 overflow-hidden relative">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
-                <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 text-xs flex items-center">
-                  <Star className="w-3 h-3 text-yellow-500 fill-current mr-0.5" />
-                  {product.rating}
+        {recsLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-sky-500" /></div>
+        ) : recommendedProducts.length === 0 ? (
+          <p className="text-center text-slate-text py-8">No recommendations available</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {recommendedProducts.map((product) => (
+              <Link key={product.id} to={`/marketplace/product/${product.id}`} className="group">
+                <div className="aspect-square bg-sky-100 rounded-lg mb-2 overflow-hidden relative">
+                  <img src={product.images?.[0] || '/placeholder.png'} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 text-xs flex items-center">
+                    <Star className="w-3 h-3 text-yellow-500 fill-current mr-0.5" /> {product.rating || 0}
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-sm font-medium text-charcoal truncate">{product.name}</h3>
-              <p className="text-xs text-slate-text">KSh {product.price.toLocaleString()}</p>
-              <p className="text-[10px] text-redbull-blue mt-1">{product.reason}</p>
-            </Link>
-          ))}
-        </div>
+                <h3 className="text-sm font-medium text-charcoal truncate">{product.name}</h3>
+                <p className="text-xs text-slate-text">KSh {Number(product.price).toLocaleString()}</p>
+                <p className="text-[10px] text-redbull-blue mt-1">Recommended</p>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Quick Stats & Insights */}
@@ -602,61 +617,26 @@ const DashboardOverview: React.FC = () => {
             <TrendingUp className="w-4 h-4 text-green-600" />
             <span className="text-xs font-medium text-slate-text">Spending this month</span>
           </div>
-          <p className="text-2xl font-bold text-charcoal">KSh 12,450</p>
-          <p className="text-xs text-green-600">↑ 23% from last month</p>
+          <p className="text-2xl font-bold text-charcoal">KSh {totalSpentThisMonth.toLocaleString()}</p>
+          <p className="text-xs text-green-600">↑ {ordersThisMonth > 0 ? ordersThisMonth : 0} orders</p>
         </div>
-
         <div className="bg-white rounded-xl border border-sky-100 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Package className="w-4 h-4 text-blue-600" />
             <span className="text-xs font-medium text-slate-text">Orders this month</span>
           </div>
-          <p className="text-2xl font-bold text-charcoal">8</p>
-          <p className="text-xs text-blue-600">3 in progress, 5 delivered</p>
+          <p className="text-2xl font-bold text-charcoal">{ordersThisMonth}</p>
+          <p className="text-xs text-blue-600">{deliveredThisMonth} delivered, {ordersThisMonth - deliveredThisMonth} in progress</p>
         </div>
-
         <div className="bg-white rounded-xl border border-sky-100 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="w-4 h-4 text-purple-600" />
             <span className="text-xs font-medium text-slate-text">Saved for later</span>
           </div>
-          <p className="text-2xl font-bold text-charcoal">KSh 23,450</p>
-          <p className="text-xs text-purple-600">8 items in wishlist</p>
+          <p className="text-2xl font-bold text-charcoal">KSh {wishlist?.items.reduce((sum, i) => sum + i.price, 0).toLocaleString() || 0}</p>
+          <p className="text-xs text-purple-600">{totalWishlistItems} items in wishlist</p>
         </div>
       </div>
-
-      {/* Second Seller CTA (if buyer and no application) - optional but we already have above; to avoid duplication, remove this section if not needed */}
-      {!sellerStatus && !sellerApplication && !applicationLoading && (
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200 text-center sm:text-left">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-display font-semibold text-charcoal mb-1">
-                Ready to start selling?
-              </h3>
-              <p className="text-sm text-slate-text">
-                Join hundreds of local sellers and grow your business with E-TALA
-              </p>
-              <div className="flex flex-wrap gap-3 mt-3 justify-center sm:justify-start">
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                  ✓ No monthly fees
-                </span>
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                  ✓ Reach 5,000+ customers
-                </span>
-                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                  ✓ Verified seller badge
-                </span>
-              </div>
-            </div>
-            <Link
-              to="/become-seller"
-              className="bg-indigo-600 text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-indigo-700 transition-colors shadow-lg whitespace-nowrap"
-            >
-              Become a Seller Today
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

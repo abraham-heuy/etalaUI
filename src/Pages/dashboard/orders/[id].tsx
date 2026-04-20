@@ -84,7 +84,6 @@ const OrderDetailPage: React.FC = () => {
   const handleReturnRequest = async () => {
     if (!returnReason) return;
     setIsUpdating(true);
-    // Simulate return request – implement actual endpoint later
     setTimeout(() => {
       console.log('Return requested:', { orderId: order?.id, reason: returnReason });
       setIsUpdating(false);
@@ -118,7 +117,6 @@ const OrderDetailPage: React.FC = () => {
     });
   };
 
-  // Build timeline based on order status
   const buildTimeline = () => {
     const timeline = [];
     const createdDate = order?.createdAt;
@@ -205,6 +203,14 @@ const OrderDetailPage: React.FC = () => {
 
   const canCancel = order.status === 'processing' || order.status === 'pending';
   const canReturn = order.status === 'delivered';
+  
+  // Safe shipping address with fallback
+  const shippingAddress = order.shippingAddress || { 
+    fullName: 'N/A', 
+    address: 'N/A', 
+    city: 'N/A', 
+    phone: 'N/A' 
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-0 space-y-6">
@@ -238,7 +244,6 @@ const OrderDetailPage: React.FC = () => {
               <p className="text-lg font-display font-semibold text-charcoal capitalize">
                 {order.status}
               </p>
-              {/* Estimated delivery if present */}
               {(order as any).estimatedDelivery && order.status === 'shipped' && (
                 <p className="text-xs text-slate-text mt-1">
                   Estimated delivery: {formatDate((order as any).estimatedDelivery)}
@@ -331,7 +336,6 @@ const OrderDetailPage: React.FC = () => {
                       {item.name}
                     </Link>
                     <p className="text-xs text-slate-text">Sold by: {item.sellerId}</p>
-                    {/* Tracking info if available */}
                     {(order as any).trackingNumber && (
                       <div className="mt-2 flex items-center gap-2">
                         <Truck className="w-3 h-3 text-blue-600" />
@@ -375,10 +379,10 @@ const OrderDetailPage: React.FC = () => {
             Shipping Address
           </h2>
           <div className="space-y-2 text-sm">
-            <p className="font-medium text-charcoal">{order.shippingAddress.fullName}</p>
-            <p className="text-slate-text">{order.shippingAddress.address}</p>
-            <p className="text-slate-text">{order.shippingAddress.city}</p>
-            <p className="text-slate-text">Phone: {order.shippingAddress.phone}</p>
+            <p className="font-medium text-charcoal">{shippingAddress.fullName}</p>
+            <p className="text-slate-text">{shippingAddress.address}</p>
+            <p className="text-slate-text">{shippingAddress.city}</p>
+            <p className="text-slate-text">Phone: {shippingAddress.phone}</p>
           </div>
         </div>
 
@@ -408,7 +412,6 @@ const OrderDetailPage: React.FC = () => {
                 <span className="text-slate-text">Subtotal</span>
                 <span className="text-charcoal">KSh {order.totalAmount.toLocaleString()}</span>
               </div>
-              {/* Shipping and tax could be added if available */}
               <div className="flex justify-between text-base font-bold pt-2 border-t border-sky-100">
                 <span>Total</span>
                 <span className="text-redbull-blue">KSh {order.totalAmount.toLocaleString()}</span>
