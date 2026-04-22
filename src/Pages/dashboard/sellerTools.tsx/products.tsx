@@ -275,7 +275,7 @@ const ProductsPage: React.FC = () => {
           <div className="absolute right-0 top-0 opacity-10"><Rocket className="w-32 h-32" /></div>
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-display font-semibold mb-1">Introducing the all new inventory manage:IM-(etala)</h3>
+              <h3 className="text-lg font-display font-semibold mb-1">Introducing the all new Inventory Manager:IM-(etala)</h3>
               <p className="text-sm text-sky-100 max-w-lg">Track stock, sales, and performance in one place.</p>
               <p className="text-sm text-sky-100 max-w-lg">Service type:  SaaS(Software as a Service)</p>
               <p className="text-sm text-sky-100 max-w-lg">Business size:  Tailored for  businesses of any size</p>
