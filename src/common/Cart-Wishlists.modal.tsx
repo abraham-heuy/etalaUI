@@ -5,6 +5,7 @@ import { useCart } from '../contexts/commerce/cart.context';
 import { useWishlist } from '../contexts/commerce/wishlist.context';
 import { tokenStore } from '../services/Auth/auth.service';
 import type { CartItem } from '../services/commerce/commerce.service';
+import { Link } from 'react-router-dom';
 
 interface SlidePanelProps {
   open: boolean;
@@ -70,6 +71,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({ open, onClose }) => {
   };
 
   const total = cart?.items.reduce((sum, i) => sum + (i.price * i.quantity), 0) || 0;
+  const category = cart?.category; // ✅ get the category from cart
 
   if (!tokenStore.get()) {
     return <SlidePanel open={open} onClose={onClose} title="Your Cart" icon={<ShoppingCart size={20} />} footer={null}>
@@ -77,7 +79,6 @@ export const CartPanel: React.FC<CartPanelProps> = ({ open, onClose }) => {
     </SlidePanel>;
   }
 
-  // Filter out items without an id (shouldn't happen after fetch, but guard)
   const validItems = (cart?.items || []).filter((item): item is CartItem & { id: string } => !!item.id);
 
   return (
@@ -88,7 +89,13 @@ export const CartPanel: React.FC<CartPanelProps> = ({ open, onClose }) => {
             <span>Subtotal</span>
             <span className="text-sky-600">KES {total.toLocaleString()}</span>
           </div>
-          <button className="w-full py-3 bg-sky-500 text-white rounded-xl font-medium hover:bg-sky-600">Proceed to Checkout</button>
+          <Link
+            to={`/checkout?category=${category}`}
+            onClick={onClose}
+            className="w-full py-3 bg-sky-500 text-white rounded-xl font-medium hover:bg-sky-600 text-center block"
+          >
+            Proceed to Checkout
+          </Link>
         </div>
       }>
       {isLoading ? (

@@ -65,7 +65,29 @@ export interface MarketplaceProduct extends BaseProduct {
 export interface FarmersProduct extends BaseProduct {
   unit: 'kg' | 'bunch' | 'piece' | 'bundle';
   harvestDate?: string;
+  expiryDate?: string;
   organic: boolean;
+  isCertified?: boolean;
+  subcategory?: string;
+  farmLocation?: string;
+  minOrderQuantity?: number;
+  availableQuantity?: number;
+  sellerName?: string;
+  sellerRating?: number;
+  sellerLocation?: string;
+  isFeatured?: boolean;
+  originalPrice?: number;
+  tags?: string[];
+  reviewCount?: number;      
+  rating?: number;           
+}
+export interface FarmerCategory {
+  id: string;
+  name: string;
+  icon: any;
+  image: string;
+  subcategories: string[];
+  description?: string; // make optional
 }
 
 // Food product (prepared meals, restaurant items)

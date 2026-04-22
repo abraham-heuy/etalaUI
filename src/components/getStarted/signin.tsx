@@ -24,7 +24,6 @@ const SignIn: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Phone formatting
   const formatPhoneNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     if (cleaned.startsWith('254')) return '+' + cleaned;
@@ -43,12 +42,22 @@ const SignIn: React.FC = () => {
     setError('');
 
     try {
-      await AuthService.loginPhone({ phone: phoneNumber, password, rememberMe });
+      const response = await AuthService.loginPhone({ phone: phoneNumber, password, rememberMe });
+      
+      // Extract user roles from the response (adjust according to your API response shape)
+      const user = response?.user;
+      const roles = user?.roles || [];
+      
       setSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1500);
+      
+      // Redirect based on role
+      if (roles.includes('admin')) {
+        setTimeout(() => navigate('/admin'), 1500);
+      } else {
+        setTimeout(() => navigate('/dashboard'), 1500);
+      }
     } catch (err) {
       setError(err instanceof AuthServiceError ? err.message : 'Login failed. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -61,7 +70,7 @@ const SignIn: React.FC = () => {
             <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
           <h2 className="text-2xl font-display font-bold text-charcoal mb-2">Login Successful!</h2>
-          <p className="text-sm text-slate-text">Redirecting you to your dashboard...</p>
+          <p className="text-sm text-slate-text">Redirecting you...</p>
         </div>
       </div>
     );
@@ -98,7 +107,6 @@ const SignIn: React.FC = () => {
               </div>
             )}
 
-            {/* Phone */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-text ml-2">Phone Number</label>
               <div className="relative">
@@ -115,7 +123,6 @@ const SignIn: React.FC = () => {
               <p className="text-[10px] text-slate-text/60 ml-2">Format: 07XX XXX XXX or 2547XX XXX XXX</p>
             </div>
 
-            {/* Password */}
             <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <label className="text-xs font-medium text-slate-text ml-2">Password</label>
@@ -143,7 +150,6 @@ const SignIn: React.FC = () => {
               </div>
             </div>
 
-            {/* Remember me */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -157,7 +163,6 @@ const SignIn: React.FC = () => {
               <span className="text-xs text-slate-text">Remember me</span>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isLoading}
@@ -171,7 +176,6 @@ const SignIn: React.FC = () => {
             </button>
           </form>
 
-          {/* Sign up link */}
           <div className="text-center pt-4">
             <p className="text-xs text-slate-text">
               Don't have an account?{' '}
@@ -181,7 +185,6 @@ const SignIn: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="max-w-md mx-auto px-4 py-6">
         <div className="flex justify-center gap-4 text-[10px] text-slate-text/60">
           <Link to="/terms" className="hover:text-sky-600 transition-colors">Terms</Link>

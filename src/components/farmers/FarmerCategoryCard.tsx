@@ -2,10 +2,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import type { FarmerCategory } from '../../data/farmers';
+
+// Define the expected shape from the backend
+interface DynamicCategory {
+  id: string;
+  name: string;
+  icon: React.ElementType;
+  image?: string;
+  subcategories?: string[];
+}
 
 interface FarmerCategoryCardProps {
-  category: FarmerCategory;
+  category: DynamicCategory;
 }
 
 const FarmerCategoryCard: React.FC<FarmerCategoryCardProps> = ({ category }) => {
@@ -18,7 +26,7 @@ const FarmerCategoryCard: React.FC<FarmerCategoryCardProps> = ({ category }) => 
     >
       <div className="h-32 overflow-hidden">
         <img 
-          src={category.image} 
+          src={category.image || 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=100&h=100&fit=crop'} 
           alt={category.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
         />
@@ -32,7 +40,7 @@ const FarmerCategoryCard: React.FC<FarmerCategoryCardProps> = ({ category }) => 
               <Icon className="w-4 h-4" />
               <h3 className="text-sm font-display font-semibold">{category.name}</h3>
             </div>
-            <p className="text-xs text-white/80">{category.subcategories.length} types</p>
+            <p className="text-xs text-white/80">{category.subcategories?.length || 0} types</p>
           </div>
           <ArrowRight className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform" />
         </div>

@@ -20,7 +20,10 @@ import {
   Calendar,
   Loader2,
   CheckCircle,
-  XCircle
+  XCircle,
+  PlusCircle,
+  
+  ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/auth/auth';
 import { SellerApplicationService, type SellerApplication } from '../../../services/Auth/seller-applications.service';
@@ -29,9 +32,9 @@ import { MarketplaceService, type MarketplaceProduct } from '../../../services/M
 
 const DashboardOverview: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [isSellerStatus, setIsSellerStatus] = useState(false);
-  const [sellerApplication, setSellerApplication] = useState<SellerApplication | null>(null);
+  const [sellerApplications, setSellerApplications] = useState<SellerApplication[]>([]);
   const [applicationLoading, setApplicationLoading] = useState(true);
+  const [activeRole, setActiveRole] = useState<'buyer' | 'seller'>('buyer');
   
   // Real data states
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -48,30 +51,23 @@ const DashboardOverview: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchDashboardData();
-      fetchSellerApplication();
+      fetchSellerApplications();
     }
   }, [user]);
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch recent orders (limit 3)
       const orders = await CommerceService.getMyOrders();
       setRecentOrders(orders.slice(0, 3));
       
-      // Fetch wishlist
       const wishlistData = await CommerceService.getWishlist();
       setWishlist(wishlistData);
       
-      // Generate recommendations based on wishlist (or fallback to trending)
       let recs: MarketplaceProduct[] = [];
       if (wishlistData.items.length > 0) {
-        // Get the first wishlist item's product details to find its category
         const firstItem = wishlistData.items[0];
         if (firstItem.productType === 'marketplace') {
           try {
-            // We need a method to get product by ID from marketplace service
-            // Assuming we have a method getProductById (if not, use search or category)
-            // For now, fallback to trending if not available
             recs = await MarketplaceService.getTrending(1, 4);
           } catch (e) {
             recs = await MarketplaceService.getTrending(1, 4);
@@ -84,47 +80,14 @@ const DashboardOverview: React.FC = () => {
       }
       setRecommendedProducts(recs);
       
-      // Loyalty points (from user or default 0)
       setLoyaltyPoints((user as any)?.loyaltyPoints || 0);
       
-      // Active offers (mock – can be replaced with real endpoint)
       setActiveOffers([
-        { 
-          id: 1, 
-          title: 'Free Delivery', 
-          description: 'On orders over KSh 1,000', 
-          code: 'FREESHIP',
-          validUntil: '2026-03-31',
-          discount: 0,
-          bg: 'bg-green-50',
-          icon: Package,
-          color: 'text-green-600'
-        },
-        { 
-          id: 2, 
-          title: 'Weekend Flash Sale', 
-          description: '15% off on electronics', 
-          code: 'WEEKEND15',
-          validUntil: '2026-03-15',
-          discount: 15,
-          bg: 'bg-blue-50',
-          icon: Tag,
-          color: 'text-blue-600'
-        },
-        { 
-          id: 3, 
-          title: 'Birthday Bonus', 
-          description: 'Double points this month', 
-          code: 'BDAY2X',
-          validUntil: '2026-03-31',
-          discount: 0,
-          bg: 'bg-pink-50',
-          icon: Gift,
-          color: 'text-pink-600'
-        },
+        { id: 1, title: 'Free Delivery', description: 'On orders over KSh 1,000', code: 'FREESHIP', validUntil: '2026-03-31', discount: 0, bg: 'bg-green-50', icon: Package, color: 'text-green-600' },
+        { id: 2, title: 'Weekend Flash Sale', description: '15% off on electronics', code: 'WEEKEND15', validUntil: '2026-03-15', discount: 15, bg: 'bg-blue-50', icon: Tag, color: 'text-blue-600' },
+        { id: 3, title: 'Birthday Bonus', description: 'Double points this month', code: 'BDAY2X', validUntil: '2026-03-31', discount: 0, bg: 'bg-pink-50', icon: Gift, color: 'text-pink-600' },
       ]);
       
-      // Upcoming deals (mock)
       setUpcomingDeals([
         { day: 'Tomorrow', deal: 'Farm Fresh Friday', discount: '20% off produce' },
         { day: 'Mar 15', deal: 'Tech Tuesday', discount: 'Up to 30% off electronics' },
@@ -140,14 +103,14 @@ const DashboardOverview: React.FC = () => {
     }
   };
 
-  const fetchSellerApplication = async () => {
+  const fetchSellerApplications = async () => {
     try {
       setApplicationLoading(true);
       const apps = await SellerApplicationService.getMyApplications();
-      setSellerApplication(apps.length > 0 ? apps[0] : null);
+      setSellerApplications(apps);
     } catch (err) {
-      console.error('Failed to fetch seller application:', err);
-      setSellerApplication(null);
+      console.error('Failed to fetch seller applications:', err);
+      setSellerApplications([]);
     } finally {
       setApplicationLoading(false);
     }
@@ -160,7 +123,6 @@ const DashboardOverview: React.FC = () => {
   const ordersThisMonth = recentOrders.length;
   const deliveredThisMonth = recentOrders.filter(o => o.status === 'delivered').length;
 
-  // User info helpers
   const getDisplayName = () => {
     if (user?.fullName) return user.fullName;
     if (user?.email) return user.email.split('@')[0];
@@ -180,9 +142,18 @@ const DashboardOverview: React.FC = () => {
     return roles.includes('seller') || roles.includes('admin');
   };
 
-  useEffect(() => {
-    setIsSellerStatus(isSeller());
-  }, [user]);
+  // Helper to get category display name
+  const getCategoryDisplayName = (cat: string) => {
+    const map: Record<string, string> = {
+      marketplace: 'Marketplace',
+      farmers: 'Farmers',
+      food: 'Food',
+      stays: 'Stays',
+      boda: 'Boda & Transport',
+      services: 'Services',
+    };
+    return map[cat] || cat;
+  };
 
   if (isLoading) {
     return (
@@ -195,170 +166,9 @@ const DashboardOverview: React.FC = () => {
     );
   }
 
-  const renderSellerSection = () => {
-    // If already a seller, show seller info
-    if (isSellerStatus) {
-      return (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <Store className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-base font-display font-semibold text-charcoal">
-                  Seller Account Active
-                </h3>
-                <p className="text-sm text-slate-text">
-                  Your seller account is verified and active
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/dashboard/products"
-              className="bg-green-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
-            >
-              Start Selling →
-            </Link>
-          </div>
-        </div>
-      );
-    }
-
-    // If loading application status
-    if (applicationLoading) {
-      return (
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-5">
-          <div className="flex items-center justify-center gap-3">
-            <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
-            <span className="text-sm text-slate-text">Checking application status...</span>
-          </div>
-        </div>
-      );
-    }
-
-    // If user has an application
-    if (sellerApplication) {
-      const app = sellerApplication;
-      const status = app.status;
-      
-      if (status === 'pending') {
-        return (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="text-base font-display font-semibold text-charcoal">
-                    Seller Application Under Review
-                  </h3>
-                  <p className="text-sm text-slate-text">
-                    Your application for <strong>{app.businessName}</strong> is being reviewed
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    Submitted on {new Date(app.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/dashboard/seller-application"
-                className="bg-amber-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-amber-700 transition-colors whitespace-nowrap"
-              >
-                View Details →
-              </Link>
-            </div>
-          </div>
-        );
-      } else if (status === 'rejected') {
-        return (
-          <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <XCircle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-base font-display font-semibold text-charcoal">
-                    Seller Application Not Approved
-                  </h3>
-                  <p className="text-sm text-slate-text">
-                    Your application for <strong>{app.businessName}</strong> was not approved.
-                  </p>
-                  {app.rejectionReason && (
-                    <p className="text-xs text-red-700 mt-1">
-                      Reason: {app.rejectionReason}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Link
-                to="/become-seller"
-                className="bg-red-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-red-700 transition-colors whitespace-nowrap"
-              >
-                Reapply →
-              </Link>
-            </div>
-          </div>
-        );
-      } else if (status === 'approved') {
-        // This case might already be caught by sellerStatus, but just in case
-        return (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-base font-display font-semibold text-charcoal">
-                    Seller Account Ready
-                  </h3>
-                  <p className="text-sm text-slate-text">
-                    Congratulations! Your seller account is active.
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/dashboard/seller"
-                className="bg-green-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-green-700 transition-colors whitespace-nowrap"
-              >
-                Go to Seller Dashboard →
-              </Link>
-            </div>
-          </div>
-        );
-      }
-    }
-
-    // Default: no application, not a seller
-    return (
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-              <Store className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="text-base font-display font-semibold text-charcoal">
-                Start selling on E-TALA
-              </h3>
-              <p className="text-sm text-slate-text">
-                Reach thousands of customers in Tala and grow your business
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/become-seller"
-            className="bg-purple-600 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-purple-700 transition-colors whitespace-nowrap"
-          >
-            Become a Seller →
-          </Link>
-        </div>
-      </div>
-    );
-  };
+  const approvedApps = sellerApplications.filter(app => app.status === 'approved');
+  const pendingApps = sellerApplications.filter(app => app.status === 'pending');
+  const rejectedApps = sellerApplications.filter(app => app.status === 'rejected');
 
   return (
     <div className="space-y-8">
@@ -397,8 +207,73 @@ const DashboardOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Seller Section */}
-      {renderSellerSection()}
+      {/* Quick Actions Section with Role Toggle */}
+      <div className="bg-white rounded-xl border border-sky-100 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-display font-semibold text-charcoal">Quick Actions</h2>
+          <div className="flex items-center gap-1 bg-sky-100 rounded-full p-0.5">
+            <button
+              onClick={() => setActiveRole('buyer')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                activeRole === 'buyer' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-text hover:bg-sky-200'
+              }`}
+            >
+              Buyer
+            </button>
+            <button
+              onClick={() => isSeller() && setActiveRole('seller')}
+              disabled={!isSeller()}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                !isSeller() ? 'opacity-50 cursor-not-allowed' : activeRole === 'seller' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-text hover:bg-sky-200'
+              }`}
+            >
+              Seller
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {activeRole === 'buyer' ? (
+            <>
+              <Link to="/back-to-shopping" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <ShoppingBag className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">Shop</span>
+              </Link>
+              <Link to="/dashboard/orders" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <Package className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">My Orders</span>
+              </Link>
+              <Link to="/dashboard/wishlist" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <Heart className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">Wishlist</span>
+              </Link>
+              <Link to="/marketplace/mtush" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <Tag className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">Mtush</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/dashboard/products" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <Package className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">My Products</span>
+              </Link>
+              <Link to="/dashboard/orders" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <ShoppingCart className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">Sales</span>
+              </Link>
+              <Link to="/dashboard/seller-start" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <Store className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">Seller Hub</span>
+              </Link>
+              <Link to="/become-seller" className="flex flex-col items-center gap-2 p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
+                <PlusCircle className="w-6 h-6 text-sky-600" />
+                <span className="text-xs font-medium text-charcoal">Add Category</span>
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -435,6 +310,107 @@ const DashboardOverview: React.FC = () => {
           <p className="text-[10px] text-slate-text mt-1">M-Pesa</p>
         </div>
       </div>
+
+      {/* Seller Applications Section (if any) */}
+      {!applicationLoading && (
+        <div className="space-y-4">
+          {/* Approved categories */}
+          {approvedApps.length > 0 && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <h3 className="text-base font-display font-semibold text-charcoal">Your Seller Categories</h3>
+              </div>
+              <div className="space-y-2 mb-4">
+                {approvedApps.map(app => (
+                  <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-white rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-charcoal">{getCategoryDisplayName(app.category)}</p>
+                      <p className="text-xs text-slate-text">Business: {app.businessName}</p>
+                    </div>
+                    <Link to={`/dashboard/products/new?category=${app.category}`} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-full hover:bg-green-700 text-center">
+                      Post Product
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              <Link to="/dashboard/products" className="text-sm text-green-700 hover:underline flex items-center gap-1">
+                Manage Products <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+
+          {/* Pending applications */}
+          {pendingApps.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-5 h-5 text-amber-600" />
+                <h3 className="text-base font-display font-semibold text-charcoal">Pending Applications</h3>
+              </div>
+              <div className="space-y-3">
+                {pendingApps.map(app => (
+                  <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-white rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-charcoal">{getCategoryDisplayName(app.category)}</p>
+                      <p className="text-xs text-slate-text">Submitted on {new Date(app.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <Link to={`/dashboard/seller-application/${app.id}`} className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-full hover:bg-amber-700 text-center">
+                      View Details
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rejected applications */}
+          {rejectedApps.length > 0 && (
+            <div className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <h3 className="text-base font-display font-semibold text-charcoal">Applications Not Approved</h3>
+              </div>
+              <div className="space-y-2">
+                {rejectedApps.map(app => (
+                  <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-white rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-charcoal">{getCategoryDisplayName(app.category)}</p>
+                      <p className="text-xs text-slate-text">Rejected: {app.rejectionReason || 'No reason provided'}</p>
+                    </div>
+                    <Link to="/become-seller" className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-full hover:bg-red-700 text-center">
+                      Reapply
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Apply for another category button (if any approved or no applications at all) */}
+          {(approvedApps.length > 0 || pendingApps.length > 0 || rejectedApps.length > 0) && (
+            <div className="bg-white rounded-xl border border-sky-100 p-4 text-center">
+              <Link to="/become-seller" className="inline-flex items-center gap-2 text-sky-600 hover:text-sky-700 text-sm font-medium">
+                <PlusCircle className="w-4 h-4" />
+                Apply for another category
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Loading skeleton for applications */}
+      {applicationLoading && (
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-5 animate-pulse">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+            <div className="h-5 bg-gray-300 rounded w-40"></div>
+          </div>
+          <div className="space-y-3">
+            <div className="h-16 bg-gray-200 rounded-lg"></div>
+            <div className="h-16 bg-gray-200 rounded-lg"></div>
+          </div>
+        </div>
+      )}
 
       {/* Active Offers & Promos */}
       <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl p-5 border border-red-200">

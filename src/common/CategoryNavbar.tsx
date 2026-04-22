@@ -22,23 +22,77 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
   onBack,
 }) => {
   const navigate = useNavigate();
-  const { cart, isLoading: cartLoading } = useCart();
-  const { wishlist, isLoading: wishlistLoading } = useWishlist();
+  const { cart, refreshCart } = useCart();
+  const { wishlist, refreshWishlist } = useWishlist();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Local counts for instant updates (no loading spinners)
+  const [cartCount, setCartCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
 
-  const cartCount = cart?.items.reduce((sum, i) => sum + i.quantity, 0) || 0;
-  const wishlistCount = wishlist?.items.length || 0;
+  // Initialize counts from context once on mount
+  useEffect(() => {
+    if (cart?.items) {
+      setCartCount(cart.items.reduce((sum, i) => sum + i.quantity, 0));
+    }
+  }, [cart]);
+  
+  useEffect(() => {
+    if (wishlist?.items) {
+      setWishlistCount(wishlist.items.length);
+    }
+  }, [wishlist]);
 
+  // Listen for instant updates from product cards
+  useEffect(() => {
+    const handleCartUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.delta) {
+        setCartCount(prev => prev + customEvent.detail.delta);
+      } else {
+        // Fallback: silently refresh context
+        refreshCart();
+      }
+    };
+    
+    const handleWishlistUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.added !== undefined) {
+        setWishlistCount(prev => customEvent.detail.added ? prev + 1 : prev - 1);
+      } else {
+        refreshWishlist();
+      }
+    };
+    
+    window.addEventListener('cart-updated', handleCartUpdate);
+    window.addEventListener('wishlist-updated', handleWishlistUpdate);
+    return () => {
+      window.removeEventListener('cart-updated', handleCartUpdate);
+      window.removeEventListener('wishlist-updated', handleWishlistUpdate);
+    };
+  }, [refreshCart, refreshWishlist]);
+
+  // Cache user profile to avoid repeated API calls
   useEffect(() => {
     const token = tokenStore.get();
     if (!token) { setIsAuthLoading(false); return; }
+    
+    const cachedUser = sessionStorage.getItem('user_profile');
+    if (cachedUser) {
+      setUser(JSON.parse(cachedUser));
+      setIsAuthLoading(false);
+    }
+    
     AuthService.getMe()
-      .then(setUser)
+      .then(userData => {
+        setUser(userData);
+        sessionStorage.setItem('user_profile', JSON.stringify(userData));
+      })
       .catch(() => { tokenStore.clear(); setUser(null); })
       .finally(() => setIsAuthLoading(false));
   }, []);
@@ -55,6 +109,7 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
   const handleBack = () => (onBack ? onBack() : navigate(-1));
   const handleLogout = async () => {
     setDropdownOpen(false);
+    sessionStorage.removeItem('user_profile');
     await AuthService.logout();
     setUser(null);
     navigate('/');
@@ -65,7 +120,8 @@ const CategoryNavbar: React.FC<CategoryNavbarProps> = ({
     ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : '';
 
-  const isLoading = cartLoading || wishlistLoading || isAuthLoading;
+  // Only show loading spinner for authentication, not for cart/wishlist
+  const isLoading = isAuthLoading;
 
   return (
     <>

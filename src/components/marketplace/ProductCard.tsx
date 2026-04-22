@@ -63,6 +63,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
       };
       await CommerceService.addToCart('marketplace', item);
       showToast('success', `Added ${product.name} to cart`);
+      window.dispatchEvent(new CustomEvent('cart-updated', { detail: { delta: 1 } }));
+
     } catch (err: any) {
       showToast('error', err.message || 'Failed to add to cart');
     } finally {
@@ -85,6 +87,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
         setIsWishlisted(false);
         setWishlistItemId(null);
         showToast('success', 'Removed from wishlist');
+        window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { added: false } }));
+
       } else {
         const result = await CommerceService.addToWishlist(
           product.id,
@@ -100,6 +104,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
         const newItem = result.items.find(i => i.productId === product.id);
         setWishlistItemId(newItem?.id || null);
         showToast('success', 'Added to wishlist');
+        window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { added: true } }));
+
       }
     } catch (err: any) {
       showToast('error', err.message || 'Failed to update wishlist');

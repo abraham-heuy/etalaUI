@@ -1,5 +1,5 @@
 // AppRoutes.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { WishlistProvider } from "./contexts/commerce/wishlist.context";
 import { CartProvider } from "./contexts/commerce/cart.context";
 
@@ -68,6 +68,13 @@ import CategoriesPage from "./components/marketplace/Categories";
 import MtushPage from "./Pages/Marketplace/product/mtush";
 import StoresPage from "./Pages/Marketplace/store/storesPage";
 import CheckoutPage from "./Pages/checkout";
+import BackToShopping from "./common/backtoshopping";
+import SellerStart from "./Pages/dashboard/product/sellerstart";
+import InventoryManagerPage from "./Pages/dashboard/sellerTools.tsx/im-etala";
+import FarmersCategoriesPage from "./components/farmers/Categories";
+import FarmersAllPage from "./Pages/Farmers/farmer/farms";
+import FarmersNewArrivalsPage from "./Pages/Farmers/product/new-arrivals";
+import FarmersSearchPage from "./Pages/Farmers/product/search";
 
 // Helper to wrap routes that need cart & wishlist context
 const withMarketplaceProviders = (Component: React.ComponentType) => (
@@ -118,6 +125,17 @@ const withBodaProviders = (Component: React.ComponentType) => (
     </CartProvider>
   </WishlistProvider>
 );
+const CheckoutWrapper = () => {
+  const [searchParams] = useSearchParams();
+  const category = searchParams.get('category') || 'marketplace';
+  return (
+    <WishlistProvider>
+      <CartProvider category={category}>
+        <CheckoutPage />
+      </CartProvider>
+    </WishlistProvider>
+  );
+};
 
 export const AppRoutes = () => {
   return (
@@ -128,6 +146,9 @@ export const AppRoutes = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/about-us" element={<AboutPage />} />
         <Route path="/daily-updates" element={<DailyUpdates />} />
+        <Route path="/back-to-shopping" element={<BackToShopping />} />
+        <Route path="/checkout" element={<CheckoutWrapper />} />
+
 
         {/* Auth Routes */}
         <Route path="/sign-in" element={<SignIn />} />
@@ -145,7 +166,6 @@ export const AppRoutes = () => {
         <Route path="/marketplace/try-on-explain" element={withMarketplaceProviders(TryOnExplainPage)} />
         <Route path="/marketplace/search" element={withMarketplaceProviders(SearchResultsPage)} />
         <Route path="/marketplace/mtush" element={withMarketplaceProviders(MtushPage)} />
-        <Route path="/checkout" element={withMarketplaceProviders(CheckoutPage)} />
 
 
 
@@ -157,6 +177,11 @@ export const AppRoutes = () => {
         <Route path="/farmers/livestock" element={withFarmersProviders(LivestockPage)} />
         <Route path="/farmers/livestock/:id" element={withFarmersProviders(LivestockPage)} />
         <Route path="/farmers/livestock/inquire/:id" element={withFarmersProviders(LivestockInquirePage)} />
+        <Route path="/farmers/categories" element={withFarmersProviders(FarmersCategoriesPage )} />
+        <Route path="/farmers/all" element={withFarmersProviders(FarmersAllPage )} />
+        <Route path="/farmers/new-arrivals" element={withFarmersProviders(FarmersNewArrivalsPage)} />
+        <Route path="/farmers/search" element={withFarmersProviders(FarmersSearchPage )} />
+
 
         {/* Boda Routes */}
         <Route path="/boda" element={withBodaProviders(BodaHome)} />
@@ -222,6 +247,7 @@ export const AppRoutes = () => {
           }
         >
           <Route path="products" element={<ProductsPage />} />
+          <Route  path="seller-start" element={<SellerStart />}/>
           <Route path="products/new" element={<ProductNewPage />} />
           <Route path="products/edit/:id" element={<ProductEditPage />} />
           <Route path="sales" element={<SalesPage />} />
@@ -229,6 +255,8 @@ export const AppRoutes = () => {
           <Route path="earnings" element={<EarningsPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="inventory-manager" element={<InventoryManagerPage />} />
+
         </Route>
 
         {/* Admin Routes - Require admin role */}

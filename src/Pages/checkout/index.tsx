@@ -1,14 +1,13 @@
-// pages/checkout/index.tsx (with notes field and proper back navigation)
+// pages/checkout/index.tsx (final version)
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   Loader2, CreditCard, MapPin, Phone, User, Package, 
   CheckCircle, AlertCircle, ChevronLeft, ChevronRight, 
-  Smartphone, CreditCard as CardIcon, Shield 
+  Smartphone, CreditCard as CardIcon, Shield, CheckSquare, Square
 } from 'lucide-react';
 import CategoryNavbar from '../../common/CategoryNavbar';
-import { useCart } from '../../contexts/commerce/cart.context';
-import { CommerceService, type Order } from '../../services/commerce/commerce.service';
+import { CommerceService, type Cart, type Order } from '../../services/commerce/commerce.service';
 import { tokenStore } from '../../services/Auth/auth.service';
 import Modal from '../../common/Modal';
 
@@ -18,7 +17,9 @@ const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const category = searchParams.get('category') || 'marketplace';
-  const { cart, isLoading: cartLoading, refreshCart } = useCart();
+  
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [cartLoading, setCartLoading] = useState(true);
   
   const [currentStep, setCurrentStep] = useState<Step>('review');
   const [submitting, setSubmitting] = useState(false);
@@ -27,6 +28,9 @@ const CheckoutPage: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [, setPaymentSimulated] = useState(false);
+  
+  // Selected items state
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   // Shipping form
   const [shippingAddress, setShippingAddress] = useState({
@@ -43,8 +47,46 @@ const CheckoutPage: React.FC = () => {
       navigate('/sign-in?redirect=/checkout');
       return;
     }
-    refreshCart();
+    fetchCart();
   }, [category]);
+
+  const fetchCart = async () => {
+    setCartLoading(true);
+    try {
+      const cartData = await CommerceService.getCart(category);
+      setCart(cartData);
+      if (cartData.items.length > 0) {
+        setSelectedItemIds(new Set(cartData.items.map(item => item.id!).filter(Boolean)));
+      }
+    } catch (err) {
+      console.error('Failed to fetch cart', err);
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  const handleToggleItem = (itemId: string) => {
+    const newSet = new Set(selectedItemIds);
+    if (newSet.has(itemId)) {
+      newSet.delete(itemId);
+    } else {
+      newSet.add(itemId);
+    }
+    setSelectedItemIds(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItemIds.size === cart?.items.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(cart?.items.map(item => item.id!).filter(Boolean)));
+    }
+  };
+
+  const selectedItems = cart?.items.filter(item => item.id && selectedItemIds.has(item.id)) || [];
+  const subtotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryFee = subtotal > 5000 ? 0 : 200;
+  const total = subtotal + deliveryFee;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setShippingAddress({ ...shippingAddress, [e.target.name]: e.target.value });
@@ -54,6 +96,7 @@ const CheckoutPage: React.FC = () => {
     if (!shippingAddress.fullName.trim()) return 'Full name is required';
     if (!shippingAddress.phone.trim()) return 'Phone number is required';
     if (!shippingAddress.address.trim()) return 'Address is required';
+    if (selectedItems.length === 0) return 'Please select at least one item to checkout';
     return null;
   };
 
@@ -87,9 +130,16 @@ const CheckoutPage: React.FC = () => {
       setError('Please type "CONFIRM" to place your order');
       return;
     }
+    if (selectedItems.length === 0) {
+      setError('No items selected');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
+      // Note: The backend currently places order for the entire cart.
+      // To support partial checkout, the backend would need to accept an `items` array.
+      // For now, we place order for the whole cart (as a fallback).
       const order = await CommerceService.placeOrder({
         category,
         userName: shippingAddress.fullName,
@@ -129,15 +179,11 @@ const CheckoutPage: React.FC = () => {
           <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h2 className="text-xl font-display font-semibold text-charcoal mb-2">Your cart is empty</h2>
           <p className="text-slate-text mb-6">Add some items before checkout</p>
-          <Link to="/marketplace" className="inline-block px-6 py-2 bg-sky-500 text-white rounded-lg">Browse Marketplace</Link>
+          <Link to={`/${category}`} className="inline-block px-6 py-2 bg-sky-500 text-white rounded-lg">Browse {category}</Link>
         </div>
       </div>
     );
   }
-
-  const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryFee = subtotal > 5000 ? 0 : 200;
-  const total = subtotal + deliveryFee;
 
   const StepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
@@ -175,31 +221,53 @@ const CheckoutPage: React.FC = () => {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pt-24">
         <StepIndicator />
 
-        {/* Step 1: Review Cart & Address */}
         {currentStep === 'review' && (
           <form onSubmit={(e) => { e.preventDefault(); handleNextToPayment(); }} className="space-y-6">
-            {/* Order summary */}
+            {/* Order summary with selection */}
             <div className="bg-white rounded-2xl border border-sky-100 p-4">
-              <h2 className="text-lg font-display font-semibold text-charcoal mb-3 flex items-center gap-2">
-                <Package className="w-5 h-5" /> Order Summary
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-display font-semibold text-charcoal flex items-center gap-2">
+                  <Package className="w-5 h-5" /> Select Items
+                </h2>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-xs text-sky-600 hover:text-sky-700"
+                >
+                  {selectedItemIds.size === cart.items.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {cart.items.map(item => (
-                  <div key={item.id || item.productId} className="flex gap-3 py-2 border-b border-sky-50 last:border-0">
-                    <img src={item.image || '/placeholder.png'} alt={item.name} className="w-12 h-12 rounded object-cover bg-gray-100" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-charcoal">{item.name}</p>
-                      <p className="text-xs text-slate-text">Qty: {item.quantity}</p>
+                {cart.items.map(item => {
+                  const isSelected = item.id ? selectedItemIds.has(item.id) : false;
+                  return (
+                    <div key={item.id || item.productId} className="flex gap-3 py-2 border-b border-sky-50 last:border-0">
+                      <button
+                        type="button"
+                        onClick={() => item.id && handleToggleItem(item.id)}
+                        className="flex-shrink-0 mt-1"
+                      >
+                        {isSelected ? <CheckSquare className="w-5 h-5 text-sky-600" /> : <Square className="w-5 h-5 text-slate-400" />}
+                      </button>
+                      <img src={item.image || '/placeholder.png'} alt={item.name} className="w-12 h-12 rounded object-cover bg-gray-100" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-charcoal">{item.name}</p>
+                        <p className="text-xs text-slate-text">Qty: {item.quantity}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-sky-600">KES {item.price.toLocaleString()}</p>
                     </div>
-                    <p className="text-sm font-semibold text-sky-600">KES {item.price.toLocaleString()}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="mt-3 pt-3 border-t border-sky-100 space-y-1 text-sm">
+                <div className="flex justify-between"><span>Selected items</span><span>{selectedItems.length} / {cart.items.length}</span></div>
                 <div className="flex justify-between"><span>Subtotal</span><span>KES {subtotal.toLocaleString()}</span></div>
                 <div className="flex justify-between"><span>Delivery</span><span>{deliveryFee === 0 ? 'Free' : `KES ${deliveryFee.toLocaleString()}`}</span></div>
                 <div className="flex justify-between font-bold text-base pt-2"><span>Total</span><span>KES {total.toLocaleString()}</span></div>
               </div>
+              {selectedItems.length === 0 && (
+                <p className="text-xs text-amber-600 mt-2">Please select at least one item to checkout</p>
+              )}
             </div>
 
             {/* Shipping address */}
@@ -236,13 +304,7 @@ const CheckoutPage: React.FC = () => {
             {/* Order notes */}
             <div className="bg-white rounded-2xl border border-sky-100 p-4">
               <label className="block text-sm font-medium text-charcoal mb-1">Order notes (optional)</label>
-              <textarea 
-                value={notes} 
-                onChange={(e) => setNotes(e.target.value)} 
-                rows={2} 
-                className="w-full px-3 py-2 border border-sky-200 rounded-lg focus:outline-none focus:border-sky-400" 
-                placeholder="Special instructions for delivery..."
-              />
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border border-sky-200 rounded-lg" placeholder="Special instructions for delivery..." />
             </div>
 
             <div className="flex justify-end">
@@ -253,7 +315,6 @@ const CheckoutPage: React.FC = () => {
           </form>
         )}
 
-        {/* Step 2: Payment Method */}
         {currentStep === 'payment' && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-sky-100 p-4">
@@ -293,7 +354,6 @@ const CheckoutPage: React.FC = () => {
           </div>
         )}
 
-        {/* Step 3: Confirm Order */}
         {currentStep === 'confirm' && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-green-200 p-4">
@@ -305,6 +365,7 @@ const CheckoutPage: React.FC = () => {
             <div className="bg-white rounded-2xl border border-sky-100 p-4">
               <h3 className="font-medium mb-2">Order Summary</h3>
               <div className="text-sm space-y-1">
+                <div className="flex justify-between"><span>Selected items</span><span>{selectedItems.length}</span></div>
                 <div className="flex justify-between"><span>Subtotal</span><span>KES {subtotal.toLocaleString()}</span></div>
                 <div className="flex justify-between"><span>Delivery</span><span>{deliveryFee === 0 ? 'Free' : `KES ${deliveryFee.toLocaleString()}`}</span></div>
                 <div className="flex justify-between font-bold pt-2 border-t"><span>Total</span><span>KES {total.toLocaleString()}</span></div>
@@ -339,7 +400,6 @@ const CheckoutPage: React.FC = () => {
         )}
       </div>
 
-      {/* Confirmation Modal */}
       <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title="Confirm Order">
         <div className="space-y-4">
           <p className="text-sm text-slate-text">

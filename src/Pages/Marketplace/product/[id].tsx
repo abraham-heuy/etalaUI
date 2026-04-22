@@ -99,6 +99,8 @@ const handleToggleWishlist = async () => {
       setIsWishlisted(false);
       setWishlistItemId(null);
       showToast('success', 'Removed from wishlist');
+      window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { added: false } }));
+
     } else {
       // Add to wishlist
       await CommerceService.addToWishlist(
@@ -116,6 +118,8 @@ const handleToggleWishlist = async () => {
       const newItem = updatedWishlist.items.find(i => i.productId === product!.id);
       setWishlistItemId(newItem?.id || null);
       showToast('success', 'Added to wishlist');
+      window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { added: true } }));
+
     }
   } catch (err: any) {
     showToast('error', err.message || 'Failed to update wishlist');
@@ -145,6 +149,8 @@ const handleAddToCart = async () => {
     };
     await CommerceService.addToCart('marketplace', item);
     showToast('success', `Added ${quantity} × ${product!.name} to cart`);
+    window.dispatchEvent(new CustomEvent('cart-updated', { detail: { delta: 1 } }));
+
   } catch (err: any) {
     showToast('error', err.message || 'Failed to add to cart');
   } finally {

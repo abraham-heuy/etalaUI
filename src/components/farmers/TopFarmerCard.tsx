@@ -7,27 +7,54 @@ import {
   BadgeCheck, 
   Package,
   Sprout,
-  
 } from 'lucide-react';
-import type { TopFarmer } from '../../data/farmers';
 
 interface TopFarmerCardProps {
-  farmer: TopFarmer;
+  farmer: {
+    id: string;
+    name: string;
+    location: string;
+    rating: number;
+    products: number;
+    verified: boolean;
+    organic: boolean;
+    image?: string;
+    specialties?: string[];
+  };
 }
 
+// Helper to get initials from name
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 const TopFarmerCard: React.FC<TopFarmerCardProps> = ({ farmer }) => {
+  const specialties = farmer.specialties || [];
+  const hasImage = farmer.image && farmer.image !== 'https://images.unsplash.com/...' && !farmer.image.includes('unsplash');
+  
   return (
     <Link
       to={`/farmers/farmer/${farmer.id}`}
       className="bg-white rounded-xl border border-green-100 overflow-hidden hover:shadow-md transition-all group"
     >
       <div className="flex items-center gap-4 p-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-green-200">
-          <img 
-            src={farmer.image} 
-            alt={farmer.name}
-            className="w-full h-full object-cover"
-          />
+        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-green-200 bg-green-100 flex items-center justify-center flex-shrink-0">
+          {hasImage ? (
+            <img 
+              src={farmer.image} 
+              alt={farmer.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-lg font-bold text-green-700">
+              {getInitials(farmer.name)}
+            </span>
+          )}
         </div>
         
         <div className="flex-1">
@@ -48,7 +75,7 @@ const TopFarmerCard: React.FC<TopFarmerCardProps> = ({ farmer }) => {
           <div className="flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-500 fill-current" />
-              <span>{farmer.rating}</span>
+              <span>{farmer.rating.toFixed(1)}</span>
             </div>
             <span className="w-1 h-1 bg-slate-text/30 rounded-full"></span>
             <div className="flex items-center gap-1">
@@ -69,18 +96,20 @@ const TopFarmerCard: React.FC<TopFarmerCardProps> = ({ farmer }) => {
       </div>
       
       {/* Specialties */}
-      <div className="px-4 pb-4 pt-0 flex flex-wrap gap-1">
-        {farmer.specialties.slice(0, 2).map((specialty, idx) => (
-          <span key={idx} className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-            {specialty}
-          </span>
-        ))}
-        {farmer.specialties.length > 2 && (
-          <span className="text-[10px] text-slate-text/50">
-            +{farmer.specialties.length - 2}
-          </span>
-        )}
-      </div>
+      {specialties.length > 0 && (
+        <div className="px-4 pb-4 pt-0 flex flex-wrap gap-1">
+          {specialties.slice(0, 2).map((specialty, idx) => (
+            <span key={idx} className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full capitalize">
+              {specialty}
+            </span>
+          ))}
+          {specialties.length > 2 && (
+            <span className="text-[10px] text-slate-text/50">
+              +{specialties.length - 2}
+            </span>
+          )}
+        </div>
+      )}
     </Link>
   );
 };

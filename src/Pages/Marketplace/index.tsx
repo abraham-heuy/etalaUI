@@ -416,4 +416,4 @@ const MarketplaceHome: React.FC = () => {
   );
 };
 
-export default MarketplaceHome; 
+export default MarketplaceHome;

@@ -199,18 +199,36 @@ const DashboardLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-soft-white">
-      {/* Top Navigation Bar - MODIFIED to include notification icon */}
+      {/* Top Navigation Bar */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-sky-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <span className="text-xl font-display font-bold text-redbull-blue">E-TALA</span>
-            </Link>
+          <div className="relative flex items-center justify-between h-16">
+            {/* Left: Logo */}
+            <div className="flex items-center">
+              <Link to="/" className="flex items-center gap-2">
+                <span className="text-xl font-display font-bold text-redbull-blue">E-TALA</span>
+              </Link>
+            </div>
 
-            {/* Desktop Right Side - ADDED Notification Bell */}
+            {/* Center: Back to Shopping (with blinking dot) */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <Link
+                to="/back-to-shopping"
+                className="relative flex items-center gap-1 sm:gap-2 text-sm text-slate-text hover:text-sky-600 transition-colors group"
+              >
+                {/* Blinking dot indicator */}
+                <span className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                </span>
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Back to Shopping</span>
+              </Link>
+            </div>
+
+            {/* Right side (desktop) */}
             <div className="hidden md:flex items-center gap-4">
-              {/* Notification Icon */}
+              {/* Notification Bell */}
               <button
                 onClick={openNotificationsModal}
                 className="relative p-2 rounded-lg text-slate-text hover:bg-sky-50 transition-colors"
@@ -223,10 +241,6 @@ const DashboardLayout: React.FC = () => {
                   </span>
                 )}
               </button>
-
-              <Link to="/marketplace" className="text-sm text-slate-text hover:text-redbull-blue transition-colors">
-                Back to Shopping
-              </Link>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 transition-colors"
@@ -236,9 +250,8 @@ const DashboardLayout: React.FC = () => {
               </button>
             </div>
 
-            {/* Mobile Menu Button + Notification Icon for Mobile */}
+            {/* Mobile right side: Notification bell + Menu button */}
             <div className="flex items-center gap-2 md:hidden">
-              {/* Mobile Notification Icon */}
               <button
                 onClick={openNotificationsModal}
                 className="relative p-2 rounded-lg text-slate-text hover:bg-sky-50 transition-colors"
@@ -251,7 +264,6 @@ const DashboardLayout: React.FC = () => {
                   </span>
                 )}
               </button>
-
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg text-slate-text hover:bg-sky-50 transition-colors"
@@ -262,7 +274,6 @@ const DashboardLayout: React.FC = () => {
           </div>
         </div>
       </nav>
-
       {/* ==================== NOTIFICATION MODAL ==================== */}
       {isNotificationsOpen && (
         <div
@@ -405,8 +416,8 @@ const DashboardLayout: React.FC = () => {
                       to={item.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors mb-1 ${active
-                          ? 'bg-redbull-blue text-white'
-                          : 'text-slate-text hover:bg-sky-50'
+                        ? 'bg-redbull-blue text-white'
+                        : 'text-slate-text hover:bg-sky-50'
                         }`}
                     >
                       <span className="flex items-center gap-3">
@@ -435,8 +446,8 @@ const DashboardLayout: React.FC = () => {
                         to={item.path}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors mb-1 ${active
-                            ? 'bg-redbull-blue text-white'
-                            : 'text-slate-text hover:bg-sky-50'
+                          ? 'bg-redbull-blue text-white'
+                          : 'text-slate-text hover:bg-sky-50'
                           }`}
                       >
                         <span className="flex items-center gap-3">
@@ -464,8 +475,8 @@ const DashboardLayout: React.FC = () => {
                       to={item.path}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors mb-1 ${active
-                          ? 'bg-redbull-blue text-white'
-                          : 'text-slate-text hover:bg-sky-50'
+                        ? 'bg-redbull-blue text-white'
+                        : 'text-slate-text hover:bg-sky-50'
                         }`}
                     >
                       <span className="flex items-center gap-3">
@@ -546,8 +557,8 @@ const DashboardLayout: React.FC = () => {
                     key={item.path}
                     to={item.path}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${active
-                        ? 'bg-redbull-blue text-white'
-                        : 'text-slate-text hover:bg-sky-50'
+                      ? 'bg-redbull-blue text-white'
+                      : 'text-slate-text hover:bg-sky-50'
                       }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -574,8 +585,8 @@ const DashboardLayout: React.FC = () => {
                       key={item.path}
                       to={item.path}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${active
-                          ? 'bg-redbull-blue text-white'
-                          : 'text-slate-text hover:bg-sky-50'
+                        ? 'bg-redbull-blue text-white'
+                        : 'text-slate-text hover:bg-sky-50'
                         }`}
                     >
                       <Icon className="w-5 h-5" />
@@ -600,8 +611,8 @@ const DashboardLayout: React.FC = () => {
                     key={item.path}
                     to={item.path}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${active
-                        ? 'bg-redbull-blue text-white'
-                        : 'text-slate-text hover:bg-sky-50'
+                      ? 'bg-redbull-blue text-white'
+                      : 'text-slate-text hover:bg-sky-50'
                       }`}
                   >
                     <Icon className="w-5 h-5" />
